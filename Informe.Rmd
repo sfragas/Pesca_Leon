@@ -1,0 +1,396 @@
+---
+title: "Analisis poblaciones de trucha en Castilla Y León"
+author: "Santiago Fraga Sáenz"
+date: "22/2/2021"
+output:
+  word_document:
+    toc: yes
+    toc_depth: '5'
+  fontsize: 22pt
+  geometry: margin=.5in 
+  pdf_document:
+    toc: yes
+    toc_depth: 5
+  html_document:
+    toc: yes
+    toc_depth: 5
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+---
+# 1. ANÁLISIS Y OBSERVACIÓN PREVIA DE LOS DATOS PUBLICADOS POR LA JUNTA DE CASTILLA Y LEÓN
+<div class=text-justify font-size: 14pt>
+A partir de los datos publicados del seguimiento de las poblaciones piscícolas en las aguas de Castilla Y León, se pretende realizar un análisis de los mismos y comprobar si a partir de ellos se muestran cambios en las variables poblacionales desde el año 2014 hasta el 2018, último año publicado. Interesa conocer si se ha producido algún cambio en las variables Biomasa, Densidad o Peso Medio, ya que son las variables publicadas o directamente calculadas del resumen de datos publicado. Es importante señalar que desde la entrada en vigor de la Ley 9/2013, de 3 de diciembre, de pesca de Castilla y León, la gestión de pesca sufre un importante cambio al declararse a la trucha común como especie de interés preferente, implicando que la pesca deberá estar condicionada a la elaboración de planes de gestión y, en el caso de los tramos libres, al no poder controlarse las variables que determinan la tasa de explotación se condiciona la pesca a que esta se haga en la modalidad de sin muerte.
+Por todo ello procede determinar si la declaración de las aguas libres como libres sin muerte ha supuesto una variación en las variables poblacionales estudiadas.
+</div>
+
+```{r,warning=F,message=F,tidy=F,echo=F}
+
+#setwd("~/Master_R/Temas_R/Pesca/CyL")
+biom<-read.csv("Biomasa.csv",check.names = F)
+dens<-read.csv("densidades.csv",check.names = F)
+summary(biom)
+summary(dens)
+#Se muestra la estructura de los datos en formato ancho para ambos data frames. Posteriormente se transformarán en formato largo para poder procesar la información de forma adecuada a los procedimientos utilizados
+```
+```{r,warning=F,message=F,tidy=F,echo=F}
+biom_long<-melt(biom,id=c("Estacion","Provincia","Gestion","Nivel"),measure.vars = c("2014","2015","2016","2017","2018"),variable_name = "año")
+dens_long<-melt(dens,id=c("Estacion","Provincia","Gestion","Nivel"),measure.vars = c("2014","2015","2016","2017","2018"),variable_name = "año")
+#1.1 Unimos las 2 tablas
+colnames(biom_long)[6]<-c("Biomasa")
+colnames(dens_long)[6]<-c("Densidad")
+datos<-cbind(biom_long,dens_long[,6])
+colnames(datos)[7]<-c("Densidad")
+#1.2 Añadimos el peso medio dividiendo Biomas entre Densidad
+datos<-(datos%>%mutate(Peso_medio=Biomasa/Densidad))
+#1.3 Redondeamos los datos numericos para ajustarlos con 2 decimales
+datos$Peso_medio<-round(datos$Peso_medio,2)
+datos$Biomasa<-round(datos$Biomasa,2)
+datos$Densidad<-round(datos$Densidad,2)
+#1.4 Indicamos factores en las variables nivel,gestion,provincia, Estacion,año
+datos$Estacion<-as.factor(datos$Estacion)
+datos$Provincia<-as.factor(datos$Provincia)
+datos$Gestion<-as.factor(datos$Gestion)
+datos$Nivel<-as.factor(datos$Nivel)
+datos$año<-as.factor(datos$año)
+castilla<-subset(datos,datos$Provincia!="Leon")
+  #Hacemos una tabla exclusiva para Leon.
+leon<-datos[datos$Provincia=="Leon",]
+```
+<div class=text-justify>
+Preparamos los datos. Para ello creamos 2 data frames en formato long, uno para toda Castilla, excluyéndose la provincia de león y otro para los datos de la provincia de León, con las variables en columnas correspondientes a la Estación, Provincia, Gestión, Nivel de la Red, Año, Biomasa, Densidad y Peso medio. El peso medio lo obtenemos de dividir la biomasa unitaria y la densidad unitaria.
+El data frame "castilla" corresponde a los datos de toda Castilla sin contar la provincia de León y el data frame de la provincia de León se denominará "leon"
+Observamos el contenido de los data frames
+</div>
+```{r,warning=F,message=F,echo=F}
+#Para la comunidad de Castilla y León
+summary(castilla)
+#Para la provincia de León
+summary(leon)
+```
+<div class=text-justify>
+Las variables Estación, Provincia, Gestión, Nivel y año son de tipo factor y el resto numéricas. Dentro de la gestión diferenciamos los siguientes niveles en función del tramo en el que se situó la estación de muestreo:
+L= Tramo libre
+CCM= Coto con muerte mixto
+V= Vedado
+CM= coto con muerte
+AREC= Aguas en régimen especial controlado
+ARE= Aguas en regimen especial
+CSM= Coto sin muerte
+</div>
+# 2. ANÁLISIS DE LOS DIFERENTES GRUPOS
+<div class=text-justify>
+Para dar respuesta a la pregunta que se plantea en esta investigación que no es otra que ver si el cambio normativo introducido por la ley de pesca de 2013 ha supuesto cambios detectables en las variables poblacionales de trucha, tenemos que definir como, en función de los datos existentes, vamos a comprobarlo. Debido a que los datos publicados solo exponen la biomasa y la densidad como únicas variables obtenidas para cada estación, se propone definir un análisis de comparación entre grupos considerando el año 2014 como año de comparación ya que los efectos del cambio de gestión derivados de la nueva ley aún serían incipientes. De los modelos de gestión existentes el posible gran cambio se produciría en los tramos libres ya que pasarían a ser gestionados en el totalidad de las aguas trucheras como libres sin muerte.
+</div>
+## 2.1 COMPARACIÓN ENTRE GRUPOS PARA CASTILLA
+Observamos en primer lugar la distribución de las variables poblacionales, como variables respuesta, respecto a los grupos anuales y a los sistemas de gestión.
+
+### 2.1.1 PARA LA BIOMASA
+```{r,warning=F,message=F,echo=F}
+#Para Castilla. 
+#Variable biomasa
+ggplot(castilla,aes(x=año,y=Biomasa,fill=Gestion))+ylab("g/m2")+geom_boxplot()+facet_wrap(~Gestion,ncol=2)+ggtitle("Boxplot de la biomasa de trucha para cada año y tipo de gestión (Castilla)")
+```
+
+Representamos las variables para los tramos libres, donde es previsible que se puedan observar con los efectos que se quieren comprobar.
+
+```{r,warning=F,message=F,echo=F,fig.height=7,fig.width=7}
+#Variable biomasa
+ggplot(castilla[castilla$Gestion=="L",],aes(x=año,y=Biomasa,fill=Gestion))+geom_boxplot()+ggtitle("Boxplot de la biomasa de trucha en libres sin muerte 
+para cada año (Castilla)")
+```
+<div class=text-justify>
+Se observa la existencia de posibles outliers que para la comprobación de las comparaciones y realizar las comprobaciones de hipótesis deberá ser tenida en cuenta para elegir la tecnica estadística.
+Determinamos a continuación los valores medios para cada año para los tramos de pesca libre, recogiéndose igualmente las desviaciones estandar de cada grupo.
+</div>
+```{r,warning=F,message=F,echo=F}
+#Para los valores de biomasa
+sd<-function(x)sqrt(var(x,na.rm=T))
+Media<-tapply(subset(castilla,castilla$Gestion=="L")[,6],subset(castilla,castilla$Gestion=="L")[,5],mean,na.rm=T)
+Desv<-tapply(subset(castilla,castilla$Gestion=="L")[,6],subset(castilla,castilla$Gestion=="L")[,5],sd)
+knitr::kable(rbind(Media,Desv), caption = 'Valores medios y desviaciones estandar')
+```
+
+Se observa un aumento de los valores medios respecto a 2014.
+Representamos la distribución mediante histograma de la variable biomasa
+
+```{r,warning=F,message=F,echo=F}
+castilla_l<-castilla[castilla$Gestion=="L",]
+ggplot(castilla_l,aes(Biomasa))+geom_histogram()
+```    
+
+Para la comparación de los grupos optamos por análisis no paramétrico debido a la ausencia de normalidad de la variable. Aplicamos un análisis Kruskal-Wallis con comparaciones posthoc mediante el test de Nemenyi.
+
+```{r,warning=F,message=F,echo=F}
+kruskal.test (castilla_l$Biomasa~castilla_l$año)
+#Se rechaza la hipostesis nula
+
+posthoc.kruskal.nemenyi.test(Biomasa~año,data=castilla_l,dist="Chisquare")
+```
+
+**No se muestran diferencias significativas entre los grupos anuales.**
+
+### 2.1.2 CON LA VARIABLE DENSIDAD
+
+A continuación procedemos de igual manera con la variable densidad
+
+```{r,warning=F,message=F,echo=F}
+#Para Castilla. 
+#Variable densidad
+ggplot(castilla,aes(x=año,y=Densidad,fill=Gestion))+ylab("Ind/m2")+geom_boxplot()+facet_wrap(~Gestion,ncol=2)+ggtitle("Boxplot de la densidad de trucha para cada año y tipo de gestión (Castilla)")
+```
+
+Representamos las variables para los tramos libres, donde es previsible que se puedan observar con los efectos que se quieren comprobar.
+
+```{r,warning=F,message=F,echo=F}
+#Variable densidad
+ggplot(castilla[castilla$Gestion=="L",],aes(x=año,y=Densidad,fill=Gestion))+geom_boxplot()+ggtitle("Boxplot de la densidad de trucha en libres sin muerte para cada año (Castilla)")
+```
+<div class=text-justify>
+Se observa la existencia de posibles outliers que para la comprobación de las comparaciones y realizar las comprobaciones de hipótesis deberá ser tenida en cuenta para elegir la tecnica estadística.
+Determinamos a continuación los valores medios para cada año para los tramos de pesca libre, recogiéndose igualmente las desviaciones estandar de cada grupo.
+</div>
+```{r,warning=F,message=F,echo=F}
+#Para los valores de densidad
+Media<-tapply(subset(castilla,castilla$Gestion=="L")[,7],subset(castilla,castilla$Gestion=="L")[,5],mean,na.rm=T)
+Desv<-tapply(subset(castilla,castilla$Gestion=="L")[,7],subset(castilla,castilla$Gestion=="L")[,5],sd)
+knitr::kable(rbind(Media,Desv), caption = 'Valores medios y desviaciones estandar')
+```
+
+Se muestra un aumento de la densidad en todos los años salvo el 2018, que se produce una reducción.
+Representamos la distribución mediante histograma de la variable densidad.
+
+```{r,warning=F,message=F,echo=F}
+ggplot(castilla_l,aes(Densidad))+geom_histogram()
+```    
+
+Para la comparación de los grupos optamos por análisis no paramétrico debido a la ausencia de normalidad de la variable. Aplicamos un análisis Kruskal-Wallis con comparaciones posthoc mediante el test de Nemenyi.
+
+```{r,warning=F,message=F,echo=F}
+kruskal.test (castilla_l$Densidad~castilla_l$año)
+#Se rechaza la hipostesis nula
+
+posthoc.kruskal.nemenyi.test(Densidad~año,data=castilla_l,dist="Chisquare")
+```
+
+**No se observan diferencias significativas entre los grupos.** 
+
+### 2.1.3. PARA LA VARIABLE PESO MEDIO
+
+A continuación procedemos de igual manera con la variable densidad.
+
+```{r,warning=F,message=F,echo=F}
+#Para Castilla. 
+#Variable peso medio
+ggplot(castilla,aes(x=año,y=Peso_medio,fill=Gestion))+ylab("g/Indv")+geom_boxplot()+facet_wrap(~Gestion,ncol=2)+ggtitle("Boxplot de peso medio de trucha para cada año y tipo de gestión (Castilla)")
+```
+
+Representamos las variables para los tramos libres, donde es previsible que se puedan observar con los efectos que se quieren comprobar.
+
+```{r,warning=F,message=F,echo=F}
+#Variable peso medio
+ggplot(castilla[castilla$Gestion=="L",],aes(x=año,y=Peso_medio,fill=Gestion))+geom_boxplot()+ggtitle("Boxplot del peso medio de trucha en libres sin muerte para cada año (Castilla)")
+```
+<div class=text-justify>
+Se observa la existencia de posibles outliers que para la comprobación de las comparaciones y realizar las comprobaciones de hipótesis deberá ser tenida en cuenta para elegir la tecnica estadística.
+Determinamos a continuación los valores medios para cada año para los tramos de pesca libre, recogiéndose igualmente las desviaciones estandar de cada grupo.
+</div>
+```{r,warning=F,message=F,echo=F}
+#Para los valores de peso medio
+Media<-tapply(subset(castilla,castilla$Gestion=="L")[,8],subset(castilla,castilla$Gestion=="L")[,5],mean,na.rm=T)
+Desv<-tapply(subset(castilla,castilla$Gestion=="L")[,8],subset(castilla,castilla$Gestion=="L")[,5],sd)
+knitr::kable(rbind(Media,Desv), caption = 'Valores medios y desviaciones estandar')
+```
+
+En este caso se produce una ligera disminución del peso medio respecto del año 2014.
+Representamos la distribución mediante histograma de la variable peso medio.
+
+```{r,warning=F,message=F,echo=F}
+ggplot(castilla_l,aes(Peso_medio))+geom_histogram()
+```    
+
+Para la comparación de los grupos optamos por análisis no paramétrico debido a la ausencia de normalidad de la variable. Aplicamos un análisis Kruskal-Wallis con comparaciones posthoc mediante el test de Nemenyi.
+
+```{r,warning=F,message=F,echo=F}
+kruskal.test (castilla_l$Peso_medio~castilla_l$año)
+#Se rechaza la hipostesis nula
+
+posthoc.kruskal.nemenyi.test(Peso_medio~año,data=castilla_l,dist="Chisquare")
+```
+
+**No se observan diferencias significativas entre los grupos.**
+ 
+## 2.2 COMPARACIÓN ENTRE GRUPOS PARA LEÓN
+<div class=text-justify>
+Al igual que hicimos para toda la comunidad autónoma, graficamos las variables poblacionales de trucha respecto a los años y a los sistemas de gestión para el caso de la provincia de León.
+</div>
+### 2.2.1 PARA LA VARIABLE BIOMASA
+
+```{r,warning=F,message=F,echo=F}
+#Para León. 
+#Variable biomasa
+ggplot(leon,aes(x=año,y=Biomasa,fill=Gestion))+ylab("g/m2")+geom_boxplot()+facet_wrap(~Gestion,ncol=2)+ggtitle("Boxplot de la biomasa de trucha para cada año y tipo de gestión (León)")
+```
+
+Representamos las variables para los tramos libres, donde es previsible que se puedan observar con los efectos que se quieren comprobar.
+
+```{r,warning=F,message=F,echo=F}
+#Variable biomasa
+leon_l<-leon[leon$Gestion=="L",]
+ggplot(leon_l,aes(x=año,y=Biomasa,fill=Gestion))+geom_boxplot()+ggtitle("Boxplot de la biomasa de trucha en libres sin muerte para cada año (León)")
+```
+<div class=text-justify>
+Se observa la existencia de posibles outliers que para la comprobación de las comparaciones y realizar las comprobaciones de hipótesis deberá ser tenida en cuenta para elegir la tecnica estadística.
+Determinamos a continuación los valores medios para cada año para los tramos de pesca libre, recogiéndose igualmente las desviaciones estándar de cada grupo.
+</div>
+```{r,warning=F,message=F,echo=F}
+#Para los valores de biomasa
+Media<-tapply(leon_l[,6],leon_l[,5],mean,na.rm=T)
+Desv<-tapply(leon_l[,6],leon_l[,5],sd)
+knitr::kable(rbind(Media,Desv), caption = 'Valores medios y desviaciones estandar')
+```
+
+Se observa un aumento de los valores medios en todos los años respecto a 2014, llegando a superar el 100%de incremento en el año 2017.
+
+Representamos los valores medios de la biomasa por año para estos tramos libres que pasaron a ser libres sin muerte a partir del año 2014.
+
+```{r,warning=F,message=F,echo=F}
+Media<-tapply(leon_l[,6],leon_l[,5],mean,na.rm=T)
+medias<-data.frame(Año=c(2014,2015,2016,2017,2018),Medias=Media)
+B<-ggplot(leon[leon$Gestion=="L",],aes(x=año,y=Biomasa))+ylab("gr/m2")+geom_bar(stat="summary",fun="mean")+ggtitle("Biomasas de trucha en los libres (provincia de León)")
+B+geom_text(data=medias,aes(x=as.factor(Año),y=Medias,label=paste(round(Medias,2))),nudge_y=.5)
+```
+
+Se puede observar una importante respuesta de la variable biomasa media a partir del año 2014.
+
+Representamos la distribución mediante histograma de la variable biomasa.
+
+```{r,warning=F,message=F,echo=F}
+ggplot(leon_l,aes(Biomasa))+geom_histogram()
+```    
+
+Para la comparación de los grupos optamos por análisis no paramétrico debido a la ausencia de normalidad de la variable. Aplicamos un análisis Kruskal-Wallis con comparaciones posthoc mediante el test de Nemenyi.
+
+```{r,warning=F,message=F,echo=F}
+kruskal.test (leon_l$Biomasa~leon_l$año)
+#Se rechaza la hipostesis nula
+
+posthoc.kruskal.nemenyi.test(Biomasa~año,data=leon_l,dist="Chisquare")
+```
+
+**Se muestran diferencias significativas entre 2014 y 2017.**
+
+### 2.2.2 PARA LA VARIABLE DENSIDAD
+
+```{r,warning=F,message=F,echo=F}
+#Para León. 
+#Variable densidad
+ggplot(leon,aes(x=año,y=Densidad,fill=Gestion))+ylab("Indv/m2")+geom_boxplot()+facet_wrap(~Gestion,ncol=2)+ggtitle("Boxplot de la densidad de trucha para cada año y tipo de gestión (León)")
+```
+
+Representamos las variables para los tramos libres, donde es previsible que se puedan observar con los efectos que se quieren comprobar.
+
+```{r,warning=F,message=F,echo=F}
+#Variable densidad
+ggplot(leon_l,aes(x=año,y=Densidad,fill=Gestion))+geom_boxplot()+ggtitle("Boxplot de la densidad de trucha en libres sin muerte para cada año (León)")
+```
+<div class=text-justify>
+Se observa la existencia de posibles outliers que para la comprobación de las comparaciones y realizar las comprobaciones de hipótesis deberá ser tenida en cuenta para elegir la tecnica estadística.
+Determinamos a continuación los valores medios para cada año para los tramos de pesca libre, recogiéndose igualmente las desviaciones estándar de cada grupo.
+</div>
+```{r,warning=F,message=F,echo=F}
+#Para los valores de densidad
+Media<-tapply(leon_l[,7],leon_l[,5],mean,na.rm=T)
+Desv<-tapply(leon_l[,7],leon_l[,5],sd)
+knitr::kable(rbind(Media,Desv), caption = 'Valores medios y desviaciones estandar')
+```
+
+Al igual que para la biomasa también se produce un aumento importante de la densidad en todos los años respecto a 2014, siendo en 2017 el año mas alto, trimplicándose el valor del año de referencia.
+
+Representamos los valores medios de la densidad por año para estos tramos libres que pasaron a ser libres sin muerte a partir del año 2014.
+
+```{r,warning=F,message=F,echo=F}
+Media_d<-tapply(leon_l[,7],leon_l[,5],mean,na.rm=T)
+medias_d<-data.frame(Año=c(2014,2015,2016,2017,2018),Medias=Media_d)
+B<-ggplot(leon[leon$Gestion=="L",],aes(x=año,y=Densidad))+ylab("Indv/m2")+geom_bar(stat="summary",fun="mean")+ggtitle("Densidad de trucha en los libres (provincia de León)")
+B+geom_text(data=medias_d,aes(x=as.factor(Año),y=Medias,label=paste(round(Medias,2))),nudge_y=.02)
+```
+
+Se puede observar una importante respuesta de la variable densidad media a partir del año 2014.
+
+Representamos la distribución mediante histograma de la variable biomasa.
+
+```{r,warning=F,message=F,echo=F}
+ggplot(leon_l,aes(Densidad))+geom_histogram()
+```    
+
+Para la comparación de los grupos optamos por análisis no paramétrico debido a la ausencia de normalidad de la variable. Aplicamos un análisis Kruskal-Wallis con comparaciones posthoc mediante el test de Nemenyi.
+
+```{r,warning=F,message=F,echo=F}
+kruskal.test (leon_l$Densidad~leon_l$año)
+#Se rechaza la hipostesis nula
+
+posthoc.kruskal.nemenyi.test(Densidad~año,data=leon_l,dist="Chisquare")
+```
+
+**Solo se muestran diferencias significativas entre 2014 y 2017.**
+
+### 2.2.3 PARA LA VARIABLE PESO MEDIO
+
+```{r,warning=F,message=F,echo=F}
+#Para León. 
+#Variable peso medio
+ggplot(leon,aes(x=año,y=Peso_medio,fill=Gestion))+ylab("gr/Indv")+geom_boxplot()+facet_wrap(~Gestion,ncol=2)+ggtitle("Boxplot del peso medio de trucha para cada año y tipo de gestión (León)")
+```
+
+Representamos las variables para los tramos libres, donde es previsible que se puedan observar con los efectos que se quieren comprobar.
+
+```{r,warning=F,message=F,echo=F}
+#Variable peso medio
+ggplot(leon_l,aes(x=año,y=Peso_medio,fill=Gestion))+geom_boxplot()+ggtitle("Boxplot del peso medio de trucha en libres sin muerte para cada año (León)")
+```
+<div class=text-justify>
+Se observa la existencia de posibles outliers que para la comprobación de las comparaciones y realizar las comprobaciones de hipótesis deberá ser tenida en cuenta para elegir la tecnica estadística.
+Determinamos a continuación los valores medios para cada año para los tramos de pesca libre, recogiéndose igualmente las desviaciones estándar de cada grupo.
+</div>
+```{r,warning=F,message=F,echo=F}
+#Para los valores de peso medio
+Media<-tapply(leon_l[-44,][,8],leon_l[-44,][,5],mean,na.rm=T)
+Desv<-tapply(leon_l[-44,][,8],leon_l[-44,][,5],sd)
+knitr::kable(rbind(Media,Desv), caption = 'Valores medios y desviaciones estandar')
+```
+
+Al igual que para el caso de Castilla y león, se produce una disminución del peso medio en todos los años respecto al año base.
+Representamos la distribución mediante histograma de la variable biomasa.
+
+```{r,warning=F,message=F,echo=F}
+ggplot(leon_l,aes(Peso_medio))+geom_histogram()
+```    
+
+Para la comparación de los grupos optamos por análisis no paramétrico debido a la ausencia de normalidad de la variable. Aplicamos un análisis Kruskal-Wallis con comparaciones posthoc mediante el test de Nemenyi.
+
+```{r,warning=F,message=F,echo=F}
+kruskal.test (leon_l$Peso_medio~leon_l$año)
+#Se rechaza la hipostesis nula
+
+posthoc.kruskal.nemenyi.test(Peso_medio~año,data=leon_l,dist="Chisquare")
+```
+
+**No se muestran diferencias significativas entre los grupos anuales.**
+
+# 3. DISCUSIÓN
+<div class=text-justify>
+De los resultados obtenidos hay que diferenciar los de Castilla y los de León. 
+
+Para el primer caso no se han obtenido diferencias significativas entre los grupos (años) aunque se aprecian un aumento en las medias de biomasa y de densidad (salvo para 2018 que la densidad baja ligeramente respecto a 2014). La variable peso medio sufre una ligera disminución aunque no resulta significativas.
+
+Para el caso de León, la provincia con mayor red de muestreo, se observa que tanto para las variables biomasa como para la densidad esta aumenta en todos los años en comparación con el año base (2014) aunque los efectos solo son significativos para el año 2017, y en el caso de la densidad también el 2015. Al igual que para el resto de Castilla Y León, el peso medio disminuye ligeramente respecto a 2014 aunque no muestra significación estadística estas diferencias.
+
+Existen bastantes incógnitas que dificultan explicar en mayor profundidad los resultados obtenidos. Llama la atención los pobres valores en biomasa obtenidos, especialmente para Castilla, por debajo de los 5g/m2 en todos los años. Pero incluso aún siendo mejores en León, tampoco son valores especialmente destacables si los comparamos con otrso datos obtenidos en otras comunidades autónomas. Esto habría que analizarlo, y determinar si puede deberse a una elección de estaciones o de la metodología o práctica de los muestreos. Por otro lado los valores de densidades muestran valores medios para castilla. En el caso de León, los valores de densidad son mas altos siendo superiores a los 0,2 indv/m2 todos los años a partir de 2014. Este año de referencia arrojaba valores medios inferiores a 0,1 indv/m2.
+
+La variable peso medio, sufre una ligera disminución ya que siendo determinada como el cociente entre la biomasa unitaria y la densidad unitaria, y debido a que el aumento de la densidad ha sido superior al aumento en biomasa, este valor ha disminuido aunque no de forma significativa, y mas claramente para León.
+
+Para analizar con más profundidad estos datos sería relevante determinar para las estaciones de muestreo la estructura de cohortes, parámetros de crecimiento y mortalidad. Con ello se podría determinar con más precisión el alcance de estos valores de peso medio.
+
+Sería importante recabar datos anteriores a 2014, ya que pese a que se ha tomado como año de comparación para comprobar los efectos de la declaración de los libres como libres sin muerte, debido a que os muestreos se realizaron al final de la temporada de pesca, es posible que en el año 2014 también se hayan notado los efectos de la entrada en vigor de la ley, y se hayan reclutado en las tallas pescables individuos que no han sido objeto de extracción, y por ello se hayan atenuado las diferencias entre los grupos.
+</div>
