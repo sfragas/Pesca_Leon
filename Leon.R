@@ -121,7 +121,8 @@ leveneTest((leon_tb_l$Biomasa),leon_tb_l$año)#Se acepta la homocedasticidad
 #Comprobamos el anova de medias relacionadas
 leon_tb_l<-leon_tb_l[!is.na(leon_tb_l$Biomasa),]#Retiramos los NA´s
 ezANOVA(leon_tb_l,dv=Biomasa,wid=Estacion,within=año)
-ezDesign(leon_tb_l,x=año,y=Estacion)
+ezDesign(leon_tb_l,x=año,y=Estacion)#Ver el diseño de los datos
+
 modelo_b<-aov(Biomasa~año, data=leon_tb_l)
 summary(modelo_b)
 TukeyHSD(modelo_b)
