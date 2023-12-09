@@ -83,28 +83,42 @@ plotmeans(Biomasa~año,data=leon_l,ci.label=F,mean.labels=T,digits=2,adj=1,cex=.
 plotmeans(Densidad~año,data=leon_l,ci.label=F,mean.labels=F,digits=2,barwidth=2)
 plotmeans(Peso_medio~año,data=leon_l[is.finite(leon_l$Peso_medio),],ci.label=F,mean.labels=T,digits=2,barwidth=2)
 
-#4. Comprobamos los valores medios y desviaciones
-  
-  #4.1. Para Leon
-#4.1.1 Valores de Biomasa
+
+# VEMOS VALORES MEDIOS Y DESVIACIONES -------------------------------------
+
+#Valores de Biomasa
 sd<-function(x)sqrt(var(x,na.rm=T))
 Media<-tapply(subset(leon,leon$Gestion=="L")[,6],subset(leon,leon$Gestion=="L")[,5],mean,na.rm=T)
 Desv<-tapply(subset(leon,leon$Gestion=="L")[,6],subset(leon,leon$Gestion=="L")[,5],sd)
 rbind(Media,Desv)
-#4.1.2 Valores de densidad
+#Valores de densidad
 Media<-tapply(subset(leon,leon$Gestion=="L")[,7],subset(leon,leon$Gestion=="L")[,5],mean,na.rm=T)
 Desv<-tapply(subset(leon,leon$Gestion=="L")[,7],subset(leon,leon$Gestion=="L")[,5],sd)
 rbind(Media,Desv)
-#4.1.3 Valores de peso medio
+#Valores de peso medio
 Media<-tapply(leon_l[-which(is.infinite(leon_l$Peso_medio)),8],leon_l[-which(is.infinite(leon_l$Peso_medio)),5],mean,na.rm=T)
 Desv<-tapply(leon_l[-which(is.infinite(leon_l$Peso_medio)),8],leon_l[-which(is.infinite(leon_l$Peso_medio)),5],sd)
 rbind(Media,Desv)
 
 
+# NORMALIDAD Y OUTLIERS ---------------------------------------------------
 
-#Se observan outliers. Comprobamos
+hist(leon_l$Biomasa)
+boxplot(leon_l$Biomasa~leon_l$año)#Hay outliers y no se puede presumir normalidad. 
 
-#La biomasa para leon
+# COMPARAMOS LA BIOMASA POR FRIEDMAN --------------------------------------
+y<-reshape(leon_l[,1:6],v.names = "Biomasa",idvar="Estacion",timevar="año",direction="wide")
+boxplot(y[,-c(1:4)])
+friedman.test(as.matrix(y[,-c(1:4)]))#No muestra diferencias significativas
+#Hacemos las pruebas post hoc
+pairwise.wilcox.test(leon_l$Biomasa, leon_l$año, p.adj="bonferroni", exact=F, paired=T)
+
+
+# PRUEBAS ROBUSTAS --------------------------------------------------------
+
+
+
+
 #leon_r<-subset(leon,leon$Biomasa<40)
 leon_tb_l<-droplevels.data.frame(subset(leon_l,leon_l$Gestion=="L"))
 hist(leon_tb_l$Biomasa)
@@ -119,7 +133,7 @@ shapiro.test((leon_tb_l$Biomasa))#Se acepta la normalidad
 #Transformamos los datos y en este caso se acepta la normalidad
 leveneTest((leon_tb_l$Biomasa),leon_tb_l$año)#Se acepta la homocedasticidad
 #Comprobamos el anova de medias relacionadas
-leon_tb_l<-leon_tb_l[!is.na(leon_tb_l$Biomasa),]#Retiramos los NA´s
+leon_tb_l<-droplevels.data.frame(leon_tb_l[!is.na(leon_tb_l$Biomasa),])#Retiramos los NA´s
 ezANOVA(leon_tb_l,dv=Biomasa,wid=Estacion,within=año)
 ezDesign(leon_tb_l,x=año,y=Estacion)#Ver el diseño de los datos
 
@@ -240,7 +254,7 @@ remover<-function(data,dv,wid,with) {
   leon<<-dato[dato[,wid]%in%completo,]
 }
 remover(leon,4,1,3)
-ezANOVA(leon,dv=value,wid=Estacion,within=año)#Se muestran diferencias significativas asumiendo la corrección de la esfericidad.
+ezANOVA(leon,dv=Biomasa,wid=Estacion,within=año)#Se muestran diferencias significativas asumiendo la corrección de la esfericidad.
 #Hacemos comparaciones posthoc
 with(leon,pairwise.t.test(value,año,p.adjust.method = "bonferroni",paired=T))#No se aprecian diferencias significativas
 #Ploteamos las medias anuales
