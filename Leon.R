@@ -38,9 +38,11 @@ leon_l<-subset(leon,leon$Gestion=="L")
 leon_CSM<-subset(leon,leon$Gestion=="CSM")
 leon_CCM<-subset(leon,leon$Gestion=="CCM")
 leon_CM<-subset(leon,leon$Gestion=="CM")
-
+leon_l<-droplevels.data.frame(leon_l)
 #2. Graficamos
 #2.1 Para Leon
+#Graficamos las variables
+
  
 #Valores medios de Biomasa y densidad para León 
 #Para os valores de Biomasa
@@ -94,8 +96,8 @@ Media<-tapply(subset(leon,leon$Gestion=="L")[,7],subset(leon,leon$Gestion=="L")[
 Desv<-tapply(subset(leon,leon$Gestion=="L")[,7],subset(leon,leon$Gestion=="L")[,5],sd)
 rbind(Media,Desv)
 #4.1.3 Valores de peso medio
-Media<-tapply(leon_l[-44,][,8],leon_l[-44,][,5],mean,na.rm=T)
-Desv<-tapply(leon_l[-44,][,8],leon_l[-44,][,5],sd)
+Media<-tapply(leon_l[-which(is.infinite(leon_l$Peso_medio)),8],leon_l[-which(is.infinite(leon_l$Peso_medio)),5],mean,na.rm=T)
+Desv<-tapply(leon_l[-which(is.infinite(leon_l$Peso_medio)),8],leon_l[-which(is.infinite(leon_l$Peso_medio)),5],sd)
 rbind(Media,Desv)
 
 
@@ -103,16 +105,25 @@ rbind(Media,Desv)
 #Se observan outliers. Comprobamos
 
 #La biomasa para leon
-leon_r<-subset(leon,leon$Biomasa<40)
-leon_r_l<-subset(leon_r,leon_r$Gestion=="L")
-hist(leon_r_l$Biomasa)
-boxplot(leon_r_l$Biomasa~leon_r_l$año)
-leon_r_l$Biomasa<-(leon_r_l$Biomasa)^0.4
-hist(leon_r_l$Biomasa)
-shapiro.test((leon_r_l$Biomasa))#Se acepta la normalidad
+#leon_r<-subset(leon,leon$Biomasa<40)
+leon_tb_l<-droplevels.data.frame(subset(leon_l,leon_l$Gestion=="L"))
+hist(leon_tb_l$Biomasa)
+boxplot(leon_tb_l$Biomasa~leon_tb_l$año)
+#Normalizamos los datos
+(b<-boxcox(lm(leon_tb_l$Biomasa~1)))#muestra valores proximos a 0,3
+(c<-b$x[which.max(b$y)])# Da un valor de 0,34
+#Transformamos los datos de Biomasa
+leon_tb_l$Biomasa<-(leon_tb_l$Biomasa)^c
+hist((leon_tb_l$Biomasa))
+shapiro.test((leon_tb_l$Biomasa))#Se acepta la normalidad
 #Transformamos los datos y en este caso se acepta la normalidad
-leveneTest((leon_r_l$Biomasa),leon_r_l$año)#Se acepta la homocedasticidad
-modelo_b<-aov(Biomasa~año, data=leon_r_l)
+leveneTest((leon_tb_l$Biomasa),leon_tb_l$año)#Se acepta la homocedasticidad
+#Comprobamos el anova de medias relacionadas
+leon_tb_l<-leon_tb_l[!is.na(leon_tb_l$Biomasa),]#Retiramos los NA´s
+ezANOVA(leon_tb_l,dv=Biomasa,wid=Estacion,within=año)
+ezDesign(leon_tb_l,x=año,y=Estacion)#Ver el diseño de los datos
+
+modelo_b<-aov(Biomasa~año, data=leon_tb_l)
 summary(modelo_b)
 TukeyHSD(modelo_b)
 par(mfrow=c(2,2))
