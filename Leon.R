@@ -119,6 +119,7 @@ pairwise.wilcox.test(leon_l$Biomasa, leon_l$año, p.adj="bonferroni", exact=F, p
 
 
 
+# Aplicamos un anova con medias repetidas ---------------------------------
 #leon_r<-subset(leon,leon$Biomasa<40)
 leon_tb_l<-droplevels.data.frame(subset(leon_l,leon_l$Gestion=="L"))
 hist(leon_tb_l$Biomasa)
@@ -134,8 +135,17 @@ shapiro.test((leon_tb_l$Biomasa))#Se acepta la normalidad
 leveneTest((leon_tb_l$Biomasa),leon_tb_l$año)#Se acepta la homocedasticidad
 #Comprobamos el anova de medias relacionadas
 leon_tb_l<-droplevels.data.frame(leon_tb_l[!is.na(leon_tb_l$Biomasa),])#Retiramos los NA´s
-ezANOVA(leon_tb_l,dv=Biomasa,wid=Estacion,within=año)
+summary(aov(Biomasa~año+Error(Estacion/año),data=leon_tb_l))#Indica diferencias significativas en la interacción del año y estacion
+#Chequeamos la esfericidad
+matriz<-pivot_wider(leon_tb_l[,c(1,5:6)],names_from = año,values_from = Biomasa)
+matriz<-as.matrix(matriz)
+matriz_model<-lm(matriz~1)
+
+
+ezANOVA(leon_tb_l,dv=Biomasa,wid=Estacion,within=año,within_full=.(año),type=3)
 ezDesign(leon_tb_l,x=año,y=Estacion)#Ver el diseño de los datos
+with(leon_tb_l,table(Biomasa,año))
+
 
 modelo_b<-aov(Biomasa~año, data=leon_tb_l)
 summary(modelo_b)
