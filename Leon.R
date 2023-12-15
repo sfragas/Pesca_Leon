@@ -6,8 +6,13 @@ setwd("~/Master_R/Temas_R/Pesca/CyL/Pesca_Leon")
 biom<-read.csv("Biomasa.csv",check.names = F)
 dens<-read.csv("densidades.csv",check.names = F)
 summary(biom)
+#El año de comienzo es
+colnames(biom)[grep(pattern = '2',colnames(biom))][1]
+#El último año será el
+a<-length(colnames(biom)[grep(pattern = '2',colnames(biom))])
+colnames(biom)[grep(pattern = '2',colnames(biom))][a]
 #Cambiamos de formato de los datos
-
+library(tidyr)
 biom_long<-pivot_longer(biom,cols=3:10,names_to="año",values_to = "Biomasa")
 dens_long<-pivot_longer(dens,cols=3:10,names_to = "año",values_to = "Densidad")
 #biom_long<-melt(biom,id=c("Estacion","Provincia","Gestion","Nivel"),measure.vars = c("2014","2015","2016","2017","2018","2019","2020","2021"),variable_name = "año")
@@ -22,7 +27,7 @@ datos<-(datos%>%mutate(Peso_medio=Biomasa/Densidad))
 #1.3 Redondeamos los castilla numericos para ajustarlos con 2 decimales
 datos$Peso_medio<-round(datos$Peso_medio,2)
 datos$Biomasa<-round(datos$Biomasa,2)
-datos$Densidad<-round(datos$Densidad,2)
+datos$Densidad<-round(datos$Densidad,3)
 #1.4 Indicamos factores en las variables nivel,gestion,provincia, Estacion,año
 datos$Estacion<-as.factor(datos$Estacion)
 datos$Provincia<-as.factor(datos$Provincia)
@@ -51,8 +56,7 @@ longitud<-function(x){
 }
 #tamaño_muestral<-data.frame(numero=tapply(leon_l[,6],leon_l[,5],longitud),año=c("2014","2015","2016","2017","2018","2019","2020","2021"))
 tamaño_muestral<-data.frame(numero=tapply(leon_l[,6],leon_l[,5],longitud),año=unique(leon_l$año))
-sd<-function(x){
-  sqrt(var(x,na.rm=T))
+sd<-function(x){  sqrt(var(x,na.rm=T))
 }
 Media<-tapply(leon_l[,6],leon_l[,5],mean,na.rm=T)
 medias<-data.frame(Año=unique(leon_l$año),Medias=Media)
@@ -84,27 +88,34 @@ plotmeans(Densidad~año,data=leon_l,ci.label=F,mean.labels=F,digits=2,barwidth=2
 plotmeans(Peso_medio~año,data=leon_l[is.finite(leon_l$Peso_medio),],ci.label=F,mean.labels=T,digits=2,barwidth=2)
 
 
-# VEMOS VALORES MEDIOS Y DESVIACIONES -------------------------------------
+# VALORES DE BIOMASA -------------------------------------
 
-#Valores de Biomasa
+#Valores medios y desviaciones por año
 sd<-function(x)sqrt(var(x,na.rm=T))
 Media<-tapply(subset(leon,leon$Gestion=="L")[,6],subset(leon,leon$Gestion=="L")[,5],mean,na.rm=T)
 Desv<-tapply(subset(leon,leon$Gestion=="L")[,6],subset(leon,leon$Gestion=="L")[,5],sd)
-rbind(Media,Desv)
-#Valores de densidad
-Media<-tapply(subset(leon,leon$Gestion=="L")[,7],subset(leon,leon$Gestion=="L")[,5],mean,na.rm=T)
-Desv<-tapply(subset(leon,leon$Gestion=="L")[,7],subset(leon,leon$Gestion=="L")[,5],sd)
-rbind(Media,Desv)
-#Valores de peso medio
-Media<-tapply(leon_l[-which(is.infinite(leon_l$Peso_medio)),8],leon_l[-which(is.infinite(leon_l$Peso_medio)),5],mean,na.rm=T)
-Desv<-tapply(leon_l[-which(is.infinite(leon_l$Peso_medio)),8],leon_l[-which(is.infinite(leon_l$Peso_medio)),5],sd)
 rbind(Media,Desv)
 
 
 # NORMALIDAD Y OUTLIERS ---------------------------------------------------
 
 hist(leon_l$Biomasa)
-boxplot(leon_l$Biomasa~leon_l$año)#Hay outliers y no se puede presumir normalidad. 
+boxplot(leon_l$Biomasa~leon_l$año)#Hay outliers y no se puede presumir normalidad.
+
+#Transformamos los datos
+library(MASS)
+leon_tb_l<-droplevels.data.frame(subset(leon_l,leon_l$Gestion=="L"))
+(b<-boxcox(lm(leon_tb_l$Biomasa~1)))
+(c<-b$x[which.max(b$y)])
+#Transformamos los datos
+leon_tb_l$Biomasa<-(leon_tb_l$Biomasa)^c
+#Visulaizamos los datos transformados
+hist(leon_tb_l$Biomasa)
+#Comprobamos la normalidad
+shapiro.test(leon_tb_l$Biomasa)#Aceptamos la normalidad
+#Testa de homogeneidad de varianzas
+leveneTest(leon_tb_l$Biomasa,leon_tb_l$año)#Aceptamos la homocedasticidad
+
 
 # COMPARAMOS LA BIOMASA POR FRIEDMAN --------------------------------------
 y<-reshape(leon_l[,1:6],v.names = "Biomasa",idvar="Estacion",timevar="año",direction="wide")
@@ -114,44 +125,130 @@ friedman.test(as.matrix(y[,-c(1:4)]))#No muestra diferencias significativas
 pairwise.wilcox.test(leon_l$Biomasa, leon_l$año, p.adj="bonferroni", exact=F, paired=T)
 
 
-# PRUEBAS ROBUSTAS --------------------------------------------------------
+# MODELOS MIXTOS --------------------------------------------------------
+library(nlme)
+####PROCEDIMIENTO DE ZUUR PARA LA SELECCION DEL MODELO
+##1. Determinamos los efectos variables y para ello saturamos los efectos fijos
+leon_tb_l<-leon_tb_l[!is.na(leon_tb_l$Biomasa),]
+m1a<-gls(Biomasa~1+año,data=leon_tb_l,method="REML")
+m1b<-lme(Biomasa~1+año,random=~1|Estacion,data=leon_tb_l,method="REML")
+anova(m1a,m1b)#Efectivamente al año parece afectar a la VD, seleccionamos como variable aleatoria la estación.
+##2. Seleccionamos las variables de la estructura fija.
+m1c<-lme(Biomasa~1,random=~1|Estacion,data=leon_tb_l,method="ML")
+m1d<-lme(Biomasa~1+año,random=~1|Estacion,data=leon_tb_l,method="ML")
+anova(m1c,m1d)#El modelo m1d es el elegido
+##3. Ajuste del modelo final con el método REML
+m1d_final<-lme(Biomasa~1+año,random=~1|Estacion,method="REML",data=leon_tb_l)
+summary(m1d_final)#Diferencias entre 2017 y 2016 respecto de 2014
+#Hacemos comparaciones multiples
+library(multcomp)
+MC<-glht(m1d_final,linfct=mcp(año="Tukey"))
+summary(MC)
+#Se observan diferencias significativas entre 2014 y 2017,2019, 2020 y 2021.
+# Ploteamos los datos del modelo
+plot(m1d_final)
+Res<-residuals(m1d_final, type="normalized")
+Fit<-fitted(m1d_final) #level=1
+# Residuos vs. predicciones
+op<-par(mfrow=c(3,2))
+plot(Res ~ Fit, xlab="Fitted values", ylab="Residuals", main="Residuals vs. fitted")
+abline(h=0)
+# Residuos vs. predictores (variables explicativas)
+plot(Res~leon_tb_l$Estacion, xlab="Estacion", ylab="Residuals")
+abline(h=0)
+plot(Res~leon_tb_l$año, xlab="Exposure", ylab="Residuals")
+abline(h=0)
+
+# Normalidad de los residuos
+hist(Res)
+qqnorm(Res)
+qqline(Res)
+par(op)
 
 
+# 2. VALORES DE DENSIDAD --------------------------------------------------
 
+#Valores medios y desviaciones por año
+Media<-tapply(subset(leon,leon$Gestion=="L")[,7],subset(leon,leon$Gestion=="L")[,5],mean,na.rm=T)
+Desv<-tapply(subset(leon,leon$Gestion=="L")[,7],subset(leon,leon$Gestion=="L")[,5],sd)
+rbind(Media,Desv)
+# NORMALIDAD Y OUTLIERS ---------------------------------------------------
 
-# Aplicamos un anova con medias repetidas ---------------------------------
-#leon_r<-subset(leon,leon$Biomasa<40)
+hist(leon_l$Densidad)
+boxplot(leon_l$Densidad~leon_l$año)#Hay outliers y no se puede presumir normalidad.
+
+#Transformamos los datos
+library(MASS)
 leon_tb_l<-droplevels.data.frame(subset(leon_l,leon_l$Gestion=="L"))
-hist(leon_tb_l$Biomasa)
-boxplot(leon_tb_l$Biomasa~leon_tb_l$año)
-#Normalizamos los datos
-(b<-boxcox(lm(leon_tb_l$Biomasa~1)))#muestra valores proximos a 0,3
-(c<-b$x[which.max(b$y)])# Da un valor de 0,34
-#Transformamos los datos de Biomasa
-leon_tb_l$Biomasa<-(leon_tb_l$Biomasa)^c
-hist((leon_tb_l$Biomasa))
-shapiro.test((leon_tb_l$Biomasa))#Se acepta la normalidad
-#Transformamos los datos y en este caso se acepta la normalidad
-leveneTest((leon_tb_l$Biomasa),leon_tb_l$año)#Se acepta la homocedasticidad
-#Comprobamos el anova de medias relacionadas
-leon_tb_l<-droplevels.data.frame(leon_tb_l[!is.na(leon_tb_l$Biomasa),])#Retiramos los NA´s
-summary(aov(Biomasa~año+Error(Estacion/año),data=leon_tb_l))#Indica diferencias significativas en la interacción del año y estacion
-#Chequeamos la esfericidad
-matriz<-pivot_wider(leon_tb_l[,c(1,5:6)],names_from = año,values_from = Biomasa)
-matriz<-as.matrix(matriz)
-matriz_model<-lm(matriz~1)
+leon_tb_l<-leon_tb_l[-which.max(leon_tb_l$Densidad),]#Retiramos el máximo por ser un error
+leon_tb_l<-leon_tb_l[-which.min(leon_tb_l$Densidad),]#Retiramos el valor de 0 por ser un error
+(b<-boxcox(lm((leon_tb_l$Densidad)~1)))
+(c<-b$x[which.max(b$y)])
+#Transformamos los datos
+leon_tb_l$Densidad<-(leon_tb_l$Densidad)^c
+#Visulaizamos los datos transformados
+hist(leon_tb_l$Densidad)
+#Comprobamos la normalidad
+shapiro.test(leon_tb_l$Densidad)#Aceptamos la normalidad
+#Testa de homogeneidad de varianzas
+leveneTest(leon_tb_l$Densidad,leon_tb_l$año)#Aceptamos la homocedasticidad
 
 
-ezANOVA(leon_tb_l,dv=Biomasa,wid=Estacion,within=año,within_full=.(año),type=3)
-ezDesign(leon_tb_l,x=año,y=Estacion)#Ver el diseño de los datos
-with(leon_tb_l,table(Biomasa,año))
+# COMPARAMOS LA DENSIDAD POR FRIEDMAN --------------------------------------
+y<-reshape(leon_l[,C(1:7)],v.names = "Densidad",idvar="Estacion",timevar="año",direction="wide")
+y<-y[,-5]
+boxplot(y[,-c(1:4)])
+friedman.test(as.matrix(y[,-c(1:4)]))#No muestra diferencias significativas
+#Hacemos las pruebas post hoc
+pairwise.wilcox.test(leon_l$Biomasa, leon_l$año, p.adj="bonferroni", exact=F, paired=T)
 
 
-modelo_b<-aov(Biomasa~año, data=leon_tb_l)
-summary(modelo_b)
-TukeyHSD(modelo_b)
-par(mfrow=c(2,2))
-plot(modelo_b)
+# MODELOS MIXTOS --------------------------------------------------------
+library(nlme)
+####PROCEDIMIENTO DE ZUUR PARA LA SELECCION DEL MODELO
+##1. Determinamos los efectos variables y para ello saturamos los efectos fijos
+leon_tb_l<-leon_tb_l[!is.na(leon_tb_l$Biomasa),]
+m1a<-gls(Biomasa~1+año,data=leon_tb_l,method="REML")
+m1b<-lme(Biomasa~1+año,random=~1|Estacion,data=leon_tb_l,method="REML")
+anova(m1a,m1b)#Efectivamente al año parece afectar a la VD, seleccionamos como variable aleatoria la estación.
+##2. Seleccionamos las variables de la estructura fija.
+m1c<-lme(Biomasa~1,random=~1|Estacion,data=leon_tb_l,method="ML")
+m1d<-lme(Biomasa~1+año,random=~1|Estacion,data=leon_tb_l,method="ML")
+anova(m1c,m1d)#El modelo m1d es el elegido
+##3. Ajuste del modelo final con el método REML
+m1d_final<-lme(Biomasa~1+año,random=~1|Estacion,method="REML",data=leon_tb_l)
+summary(m1d_final)#Diferencias entre 2017 y 2016 respecto de 2014
+#Hacemos comparaciones multiples
+library(multcomp)
+MC<-glht(m1d_final,linfct=mcp(año="Tukey"))
+summary(MC)
+#Se observan diferencias significativas entre 2014 y 2017,2019, 2020 y 2021.
+# Ploteamos los datos del modelo
+plot(m1d_final)
+Res<-residuals(m1d_final, type="normalized")
+Fit<-fitted(m1d_final) #level=1
+# Residuos vs. predicciones
+op<-par(mfrow=c(3,2))
+plot(Res ~ Fit, xlab="Fitted values", ylab="Residuals", main="Residuals vs. fitted")
+abline(h=0)
+# Residuos vs. predictores (variables explicativas)
+plot(Res~leon_tb_l$Estacion, xlab="Estacion", ylab="Residuals")
+abline(h=0)
+plot(Res~leon_tb_l$año, xlab="Exposure", ylab="Residuals")
+abline(h=0)
+
+# Normalidad de los residuos
+hist(Res)
+qqnorm(Res)
+qqline(Res)
+par(op)
+
+#Valores de peso medio
+Media<-tapply(leon_l[-which(is.infinite(leon_l$Peso_medio)),8],leon_l[-which(is.infinite(leon_l$Peso_medio)),5],mean,na.rm=T)
+Desv<-tapply(leon_l[-which(is.infinite(leon_l$Peso_medio)),8],leon_l[-which(is.infinite(leon_l$Peso_medio)),5],sd)
+rbind(Media,Desv)
+
+
 
 
 

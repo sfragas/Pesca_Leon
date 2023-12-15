@@ -1,7 +1,7 @@
 ---
-title: "Analisis poblaciones de trucha en Castilla Y León"
+title: "Analisis poblaciones de trucha en León"
 author: "Santiago Fraga Sáenz"
-date: "22/2/2021"
+date: "13/12/2023"
 output:
   word_document:
     toc: yes
@@ -18,24 +18,47 @@ output:
       collapsed: no
       smooth_scroll: yes
 ---
-# 1. ANÁLISIS Y OBSERVACIÓN PREVIA DE LOS DATOS PUBLICADOS POR LA JUNTA DE CASTILLA Y LEÓN
-<div class=text-justify font-size: 14pt>
-A partir de los datos publicados del seguimiento de las poblaciones piscícolas en las aguas de Castilla Y León, se pretende realizar un análisis de los mismos y comprobar si a partir de ellos se muestran cambios en las variables poblacionales desde el año 2014 hasta el 2021, último año publicado. Interesa conocer si se ha producido algún cambio en las variables Biomasa, Densidad o Peso Medio, ya que son las variables publicadas o directamente calculadas del resumen de datos publicado. Es importante señalar que desde la entrada en vigor de la Ley 9/2013, de 3 de diciembre, de pesca de Castilla y León, la gestión de pesca sufre un importante cambio al declararse a la trucha común como especie de interés preferente, implicando que la pesca deberá estar condicionada a la elaboración de planes de gestión y, en el caso de los tramos libres, al no poder controlarse las variables que determinan la tasa de explotación se condiciona la pesca a que esta se haga en la modalidad de sin muerte.
-Por todo ello procede determinar si la declaración de las aguas libres como libres sin muerte ha supuesto una variación en las variables poblacionales estudiadas.
-</div>
-
-```{r,warning=F,message=F,tidy=F,echo=F}
-
+```{r,warning=F,message=F,tidy=F,echo=F,eval=FALSE,error=FALSE}
 #setwd("~/Master_R/Temas_R/Pesca/CyL")
 biom<-read.csv("Biomasa.csv",check.names = F)
 dens<-read.csv("densidades.csv",check.names = F)
-summary(biom)
-summary(dens)
+#summary(biom)
+#summary(dens)
+#El año de comienzo es
+colnames(biom)[grep(pattern = '2',colnames(biom))][1]
+#El último año será el
+a<-length(colnames(biom)[grep(pattern = '2',colnames(biom))])
+colnames(biom)[grep(pattern = '2',colnames(biom))][a]
 #Se muestra la estructura de los datos en formato ancho para ambos data frames. Posteriormente se transformarán en formato largo para poder procesar la información de forma adecuada a los procedimientos utilizados
 ```
-```{r,warning=F,message=F,tidy=F,echo=F}
-biom_long<-melt(biom,id=c("Estacion","Provincia","Gestion","Nivel"),measure.vars = c("2014","2015","2016","2017","2018"),variable_name = "año")
-dens_long<-melt(dens,id=c("Estacion","Provincia","Gestion","Nivel"),measure.vars = c("2014","2015","2016","2017","2018"),variable_name = "año")
+
+# 1. ANÁLISIS Y OBSERVACIÓN PREVIA DE LOS DATOS PUBLICADOS POR LA JUNTA DE CASTILLA Y LEÓN
+<div class=text-justify font-size: 14pt>
+A partir de los datos publicados del seguimiento de las poblaciones piscícolas en las aguas de Castilla Y León, se pretende realizar un análisis de los mismos y comprobar si a partir de ellos se muestran cambios en las variables poblacionales en los años publicados, es decir, desde el año `r colnames(biom)[grep(pattern = '2',colnames(biom))][1]` hasta `r colnames(biom)[grep(pattern = '2',colnames(biom))][a] `, último año publicado. Interesa conocer si se ha producido algún cambio en las variables Biomasa, Densidad o Peso Medio, ya que son las variables publicadas o directamente calculadas del resumen de datos divulgado. Es importante señalar que desde la entrada en vigor de la Ley 9/2013, de 3 de diciembre, de pesca de Castilla y León, la gestión de pesca sufre un importante cambio al declararse a la trucha común como especie de interés preferente, implicando que la pesca deberá estar condicionada a la elaboración de planes de gestión y, en el caso de los tramos libres, al no poder controlarse las variables que determinan la tasa de explotación se condiciona la pesca a que esta se haga en la modalidad de sin muerte.
+Por todo ello procede determinar si la declaración de las aguas libres como libres sin muerte ha supuesto una variación en las variables poblacionales estudiadas.
+</div>
+
+```{r,warning=F,message=F,tidy=F,echo=F,error=FALSE}
+#Cambiamos de formato de los datos
+library(tidyr)
+biom_long<-pivot_longer(biom,cols=3:10,names_to="año",values_to = "Biomasa")
+dens_long<-pivot_longer(dens,cols=3:10,names_to = "año",values_to = "Densidad")
+datos<-cbind(biom_long,dens_long[,6])
+colnames(datos)[7]<-c("Densidad")
+#1.2 Añadimos el peso medio dividiendo Biomas entre Densidad
+datos<-(datos%>%mutate(Peso_medio=Biomasa/Densidad))
+#1.3 Redondeamos los castilla numericos para ajustarlos con 2 decimales
+datos$Peso_medio<-round(datos$Peso_medio,2)
+datos$Biomasa<-round(datos$Biomasa,2)
+datos$Densidad<-round(datos$Densidad,3)
+#1.4 Indicamos factores en las variables nivel,gestion,provincia, Estacion,año
+datos$Estacion<-as.factor(datos$Estacion)
+datos$Provincia<-as.factor(datos$Provincia)
+datos$Gestion<-as.factor(datos$Gestion)
+datos$Nivel<-as.factor(datos$Nivel)
+datos$año<-as.factor(datos$año)
+#Hacemos una tabla exclusiva para Leon.
+leon<-datos[datos$Provincia=="Leon",]
 #1.1 Unimos las 2 tablas
 colnames(biom_long)[6]<-c("Biomasa")
 colnames(dens_long)[6]<-c("Densidad")
@@ -56,15 +79,17 @@ datos$año<-as.factor(datos$año)
 castilla<-subset(datos,datos$Provincia!="Leon")
   #Hacemos una tabla exclusiva para Leon.
 leon<-datos[datos$Provincia=="Leon",]
+leon_l<-subset(leon,leon$Gestion=="L")
+leon_CSM<-subset(leon,leon$Gestion=="CSM")
+leon_CCM<-subset(leon,leon$Gestion=="CCM")
+leon_CM<-subset(leon,leon$Gestion=="CM")
+leon_l<-droplevels.data.frame(leon_l)
 ```
 <div class=text-justify>
-Preparamos los datos. Para ello creamos 2 data frames en formato long, uno para toda Castilla, excluyéndose la provincia de león y otro para los datos de la provincia de León, con las variables en columnas correspondientes a la Estación, Provincia, Gestión, Nivel de la Red, Año, Biomasa, Densidad y Peso medio. El peso medio lo obtenemos de dividir la biomasa unitaria y la densidad unitaria.
-El data frame "castilla" corresponde a los datos de toda Castilla sin contar la provincia de León y el data frame de la provincia de León se denominará "leon"
-Observamos el contenido de los data frames
+Preparamos los datos. Antes de comenzar con el análisis mostramos la estructura de los datos una vez tabulados. Estos datos se han extraído de los informes publicados por la Junta de Castilla Y León correspondientes con las redes de vigilancia y seguimineto [link] (https://medioambiente.jcyl.es/web/es/caza-pesca/informes-seguimiento-control-poblaciones.html).
+Se ha creado unn data frame para la provincia de León que comprende las siguientes variables:
 </div>
 ```{r,warning=F,message=F,echo=F}
-#Para la comunidad de Castilla y León
-summary(castilla)
 #Para la provincia de León
 summary(leon)
 ```
@@ -78,36 +103,45 @@ AREC= Aguas en régimen especial controlado
 ARE= Aguas en regimen especial
 CSM= Coto sin muerte
 </div>
-# 2. ANÁLISIS DE LOS DIFERENTES GRUPOS
+# 2. ANÁLISIS DE LA VARIABLE BIOMASA
 <div class=text-justify>
 Para dar respuesta a la pregunta que se plantea en esta investigación que no es otra que ver si el cambio normativo introducido por la ley de pesca de 2013 ha supuesto cambios detectables en las variables poblacionales de trucha, tenemos que definir como, en función de los datos existentes, vamos a comprobarlo. Debido a que los datos publicados solo exponen la biomasa y la densidad como únicas variables obtenidas para cada estación, se propone definir un análisis de comparación entre grupos considerando el año 2014 como año de comparación ya que los efectos del cambio de gestión derivados de la nueva ley aún serían incipientes. De los modelos de gestión existentes el posible gran cambio se produciría en los tramos libres ya que pasarían a ser gestionados en el totalidad de las aguas trucheras como libres sin muerte.
-</div>
-## 2.1 COMPARACIÓN ENTRE GRUPOS PARA CASTILLA
 Observamos en primer lugar la distribución de las variables poblacionales, como variables respuesta, respecto a los grupos anuales y a los sistemas de gestión.
+</div>
 
-### 2.1.1 PARA LA BIOMASA
+## 2.1 VISUALIZACIÓN DE LOS DATOS
 ```{r,warning=F,message=F,echo=F}
-#Para Castilla. 
+#Para Leon. 
 #Variable biomasa
-ggplot(castilla,aes(x=año,y=Biomasa,fill=Gestion))+ylab("g/m2")+geom_boxplot()+facet_wrap(~Gestion,ncol=2)+ggtitle("Boxplot de la biomasa de trucha para cada año y tipo de gestión (Castilla)")
+ggplot(leon,aes(x=año,y=Biomasa,fill=Gestion))+ylab("g/m2")+geom_boxplot()+facet_wrap(~Gestion,ncol=2)+ggtitle("Boxplot de la biomasa de trucha para cada año y tipo de gestión en León")
 ```
 
 Representamos las variables para los tramos libres, donde es previsible que se puedan observar con los efectos que se quieren comprobar.
 
 ```{r,warning=F,message=F,echo=F,fig.height=7,fig.width=7}
 #Variable biomasa
-ggplot(castilla[castilla$Gestion=="L",],aes(x=año,y=Biomasa,fill=Gestion))+geom_boxplot()+ggtitle("Boxplot de la biomasa de trucha en libres sin muerte 
+ggplot(leon_l,aes(x=año,y=Biomasa,fill=Gestion))+geom_boxplot()+ggtitle("Boxplot de la biomasa de trucha en libres sin muerte 
 para cada año (Castilla)")
 ```
 <div class=text-justify>
 Se observa la existencia de posibles outliers que para la comprobación de las comparaciones y realizar las comprobaciones de hipótesis deberá ser tenida en cuenta para elegir la tecnica estadística.
 Determinamos a continuación los valores medios para cada año para los tramos de pesca libre, recogiéndose igualmente las desviaciones estandar de cada grupo.
 </div>
+## 2.2 MEDIAS Y DESVIACIONES DE LA VARIABLE BIOMASA
+<div class=text-justify>
+Para los tramos libres de León, comprobamos los valores medias de biomasa de trucha (en gr/m2) en los diferentes años, así como los valores de la desviación estándar.
+</div>
 ```{r,warning=F,message=F,echo=F}
 #Para los valores de biomasa
-sd<-function(x)sqrt(var(x,na.rm=T))
-Media<-tapply(subset(castilla,castilla$Gestion=="L")[,6],subset(castilla,castilla$Gestion=="L")[,5],mean,na.rm=T)
-Desv<-tapply(subset(castilla,castilla$Gestion=="L")[,6],subset(castilla,castilla$Gestion=="L")[,5],sd)
+longitud<-function(x){
+  length(which(!is.na(x)))
+}
+tamaño_muestral<-data.frame(numero=tapply(leon_l[,6],leon_l[,5],longitud),año=unique(leon_l$año))
+sd<-function(x){sqrt(var(x,na.rm=T))
+}
+Media<-tapply(leon_l[,6],leon_l[,5],mean,na.rm=T)
+medias<-data.frame(Año=unique(leon_l$año),Medias=Media)
+Desv<-tapply(leon_l[,6],leon_l[,5],sd)
 knitr::kable(rbind(Media,Desv), caption = 'Valores medios y desviaciones estandar')
 ```
 
@@ -115,20 +149,302 @@ Se observa un aumento de los valores medios respecto a 2014.
 Representamos la distribución mediante histograma de la variable biomasa
 
 ```{r,warning=F,message=F,echo=F}
-castilla_l<-castilla[castilla$Gestion=="L",]
-ggplot(castilla_l,aes(Biomasa))+geom_histogram()
-```    
+B<-ggplot(leon_l,aes(x=año,y=Biomasa))+ylab("gr/m2")+geom_bar(stat="summary",fun="mean")+ggtitle("Biomasas de trucha en los libres sm (provincia de León)")
+c<-B+geom_text(data=medias,aes(x=as.factor(Año),y=Medias,label=paste(round(Medias,2))),nudge_y=.4,nudge_x=-.2)+stat_summary(fun.data = mean_se,geom="errorbar",linewidth = 1,width = 0.2)
+c+geom_text(data=tamaño_muestral,aes(x=as.factor(año),y=rep(-0.3,length(unique(leon_l$año))),label=paste("n= ",numero)))
 
-Para la comparación de los grupos optamos por análisis no paramétrico debido a la ausencia de normalidad de la variable. Aplicamos un análisis Kruskal-Wallis con comparaciones posthoc mediante el test de Nemenyi.
+```    
+## 2.3 MODELO PARA LA COMPARACIÓN DE LA BIOMASA
+Para la comparación de los grupos optamos en primer lugar por observar los datos y ver los supuestos para adaptarlo a un modelo lineal.
+Comprobamos la normalidad y la homocedasticidad. 
+Primero los visualizamos
 
 ```{r,warning=F,message=F,echo=F}
-kruskal.test (castilla_l$Biomasa~castilla_l$año)
-#Se rechaza la hipostesis nula
-
-posthoc.kruskal.nemenyi.test(Biomasa~año,data=castilla_l,dist="Chisquare")
+hist(leon_l$Biomasa)
+boxplot(leon_l$Biomasa~leon_l$año)#Hay outliers y no se puede presumir normalidad.
 ```
 
-**No se muestran diferencias significativas entre los grupos anuales.**
+Comprobamos la normalidad y homocedasticidad aunque es visible que no parecen cumplirse ninguno de los 2 criterios
+```{r,warning=F,message=F,echo=F}
+shapiro.test(leon_tb_l$Biomasa)#No se acepta la normalidad
+```
+No se puede aceptar la la distribución normal de los datos
+```{r,warning=F,message=F,echo=F}
+#Test de homogeneidad de varianzas
+leveneTest(leon_tb_l$Biomasa,leon_tb_l$año)#No se acepta la homocedasticidad
+```
+<div class=text-justify>
+Tampoco se puede aceptar la homocedasticidad de los datos de biomasa para los diferentes años.
+Por ello es preciso transformar los datos y ver si con ello podemos asumir un modelo lineal. Para ello determinaremos los valores de \lambda mediante la aplicación de una transformación de Box Cox
+</div>
+```{r,warning=F,message=F,echo=F}
+library(MASS)
+leon_tb_l<-droplevels.data.frame(subset(leon_l,leon_l$Gestion=="L"))
+(b<-boxcox(lm(leon_tb_l$Biomasa~1)))
+(c<-b$x[which.max(b$y)])
+#Transformamos los datos
+leon_tb_l$Biomasa<-(leon_tb_l$Biomasa)^c
+```
+Una vez transformado los datos visualizamos nuevamente
+```{r,warning=F,message=F,echo=F}
+hist(leon_tb_l$Biomasa)
+boxplot(leon_tb_l$Biomasa~leon_l$año)#Hay outliers y no se puede presumir normalidad.
+```
+Visualmente ahora parece que los datos pueden cumplir alos criterios de normalidad y homocedasticidad, pese a ello realizamos los test.
+```{r,warning=F,message=F,echo=F}
+shapiro.test(leon_tb_l$Biomasa)#Se acepta la normalidad
+```
+Se acepta la la distribución normal de los datos
+```{r,warning=F,message=F,echo=F}
+#Test de homogeneidad de varianzas
+leveneTest(leon_tb_l$Biomasa,leon_tb_l$año)#Se acepta la homocedasticidad
+```
+Se acepta la homocedasticidad
+<div class=text-justify>
+Planteamos ahora un modelo lineal mixto. Esto es conveniente en nuestro caso ya que podemos establecer una parte aleatoria del modelo con los datos anidados por la variable Estación. Como término fijo utilizaríamos la variable año, ya que se trata del factor principal que nos explica precisamente si existen diferencias en los valores de la biomasa considerando el año 2014 como el año que se produce el cambio de política de gestión al establecer los libres como libres sin muerte.
+Para la construcción del modelo seguimos el procedimiento que recomienda Zuur et al. (2009) y que se secuenciaría en fases:
+1) Estructura aleatoria óptima. Usando un modelo saturado (beyond optimal model), se determina la estructura óptima del componente aleatorio, la cual no debe contener información que esté en la componente fija. Debemos:
+• construir un modelo saturado.
+• comparar modelos con distinta estructura aleatoria, mediante máxima verosimilitud restringida (REML).
+2) Estructura fija óptima. Una vez encontramos la estructura aleatoria óptima, podemos encontrar la estructura fija óptima. Comparamos los modelos anidados mediante máxima verosimilitud (ML), manteniendo la misma estructura aleatoria.
+3) Ajuste del modelo final con REML.  
+</div>
+```{r,warning=F,message=F,echo=T}
+library(nlme)
+####PROCEDIMIENTO DE ZUUR PARA LA SELECCION DEL MODELO
+##1. Determinamos los efectos variables y para ello saturamos los efectos fijos
+leon_tb_l<-leon_tb_l[!is.na(leon_tb_l$Biomasa),]
+m1a<-gls(Biomasa~1+año,data=leon_tb_l,method="REML")
+m1b<-lme(Biomasa~1+año,random=~1|Estacion,data=leon_tb_l,method="REML")
+anova(m1a,m1b)#Efectivamente al año parece afectar a la VD, seleccionamos como variable aleatoria la estación.
+##2. Seleccionamos las variables de la estructura fija.
+m1c<-lme(Biomasa~1,random=~1|Estacion,data=leon_tb_l,method="ML")
+m1d<-lme(Biomasa~1+año,random=~1|Estacion,data=leon_tb_l,method="ML")
+anova(m1c,m1d)#El modelo m1d es el elegido
+##3. Ajuste del modelo final con el método REML
+m1d_final<-lme(Biomasa~1+año,random=~1|Estacion,method="REML",data=leon_tb_l)
+summary(m1d_final)#Diferencias entre 2017 y 2016 respecto de 2014
+```
+<div class=text-justify>
+
+El modelo final lo utilizamos patra contrastar los diferentes niveles de la variable predictora, en este caso los diferentes años mediante comparaciones múltiples mediante eltest de Tukey.
+Comrobamos el modelo de forma gráfica
+</div>
+```{r,warning=F,message=F,echo=F}
+# Ploteamos los datos del modelo
+plot(m1d_final)
+Res<-residuals(m1d_final, type="normalized")
+Fit<-fitted(m1d_final) #level=1
+# Residuos vs. predicciones
+op<-par(mfrow=c(2,2))
+plot(Res ~ Fit, xlab="Fitted values", ylab="Residuals", main="Residuals vs. fitted")
+abline(h=0)
+# Residuos vs. predictores (variables explicativas)
+plot(Res~leon_tb_l$Estacion, xlab="Estacion", ylab="Residuals")
+abline(h=0)
+plot(Res~leon_tb_l$año, xlab="Exposure", ylab="Residuals")
+abline(h=0)
+
+# Normalidad de los residuos
+par(op)
+hist(Res)
+qqnorm(Res)
+qqline(Res)
+
+```
+
+```{r,warning=F,message=F,echo=F}
+library(multcomp)
+MC<-glht(m1d_final,linfct=mcp(año="Tukey"))
+summary(MC)
+```
+<div class=text-justify>
+Podemos ver en la tabla de contrastes que para los datos de biomasa existen diferencias significativas de los datos del año 2014 respecto a los de 2017 en adelante, si exceptuamos el año 2018, año que parece producirse una reducción en la biomasa. 
+</div>
+
+# 2. ANÁLISIS DE LA VARIABLE DENSIDAD
+<div class=text-justify>
+Analizaremos la siguiente variable poblacional que corresponde con densidad de trucha en ind/m2. Como en el caso de la biomasa, interesa conocer la existencia de diferencias significativas derivadas de los diferentes inventarios para ver si el cambio de políticas de gestión que se produce en el año 2013 y que tiene como primer año de implementación el 2014, ha supuesto un cambio en las variables de las poblaciones de trucha. Como en el caso de la biomasa, se escogieron los libres por ser los que más se notaría las medidas implementadas al declararse como de pesca sin muerte.
+Observamos en primer lugar la distribución de las variables poblacionales, como variables respuesta, respecto a los grupos anuales y a los sistemas de gestión.
+</div>
+
+## 2.1 VISUALIZACIÓN DE LOS DATOS
+```{r,warning=F,message=F,echo=F}
+#Para Leon. 
+#Variable densidad
+ggplot(leon,aes(x=año,y=Densidad,fill=Gestion))+ylab("ind/m2")+geom_boxplot()+facet_wrap(~Gestion,ncol=2)+ggtitle("Boxplot de la densidad de trucha para cada año y tipo de gestión en León")
+```
+
+Representamos las variables para los tramos libres, donde es previsible que se puedan observar con los efectos que se quieren comprobar.
+
+```{r,warning=F,message=F,echo=F,fig.height=7,fig.width=7}
+#Variable densidad
+ggplot(leon_l,aes(x=año,y=Densidad,fill=Gestion))+geom_boxplot()+ggtitle("Boxplot de la variable densidad de trucha en libres sin muerte 
+para cada año")
+```
+<div class=text-justify>
+Se observa la existencia de posibles outliers que para la comprobación de las comparaciones y realizar las comprobaciones de hipótesis deberá ser tenida en cuenta para elegir la tecnica estadística.
+Determinamos a continuación los valores medios para cada año para los tramos de pesca libre, recogiéndose igualmente las desviaciones estandar de cada grupo.
+</div>
+## 2.2 MEDIAS Y DESVIACIONES DE LA VARIABLE DENSIDAD
+<div class=text-justify>
+Para los tramos libres de León, comprobamos los valores medias de biomasa de trucha (en ind/m2) en los diferentes años, así como los valores de la desviación estándar.
+</div>
+```{r,warning=F,message=F,echo=F,error=FALSE}
+#Para los valores de densidad
+leon_l<-droplevels.data.frame(leon_l[!is.na(leon_l$Densidad),])
+longitud<-function(x){
+  length(which(!is.na(x)))
+}
+tamaño_muestral<-data.frame(numero=tapply(leon_l[,7],leon_l[,5],longitud),año=unique(leon_l$año))
+sd<-function(x){sqrt(var(x,na.rm=T))
+}
+Media<-tapply(leon_l[,7],leon_l[,5],mean,na.rm=T)
+medias<-data.frame(Año=levels(leon_l$año),Medias=Media)
+Desv<-tapply(leon_l[,7],leon_l[,5],sd)
+knitr::kable(rbind(Media,Desv), caption = 'Valores medios y desviaciones estandar')
+```
+
+Se observa un aumento de los valores medios respecto a 2014.
+Representamos la distribución mediante histograma de la variable densidad
+
+```{r,warning=F,message=F,echo=F}
+B<-ggplot(leon_l,aes(x=año,y=Densidad))+ylab("ind/m2")+geom_bar(stat="summary",fun="mean")+ggtitle("Densidades de trucha en los libres sm (provincia de León)")
+c<-B+geom_text(data=medias,aes(x=as.factor(Año),y=Medias,label=paste(round(Medias,2))),nudge_y=.02,nudge_x=-.3)+stat_summary(fun.data = mean_se,geom="errorbar",linewidth = 1,width = 0.2)
+c+geom_text(data=tamaño_muestral,aes(x=as.factor(año),y=rep(-0.3,length(unique(leon_l$año))),label=paste("n= ",numero)))
+
+```    
+## 2.3 MODELO PARA LA COMPARACIÓN DE LA BIOMASA
+Para la comparación de los grupos optamos en primer lugar por observar los datos y ver los supuestos para adaptarlo a un modelo lineal.
+Comprobamos la normalidad y la homocedasticidad. 
+Primero los visualizamos
+
+```{r,warning=F,message=F,echo=F}
+hist(leon_l$Biomasa)
+boxplot(leon_l$Biomasa~leon_l$año)#Hay outliers y no se puede presumir normalidad.
+```
+
+Comprobamos la normalidad y homocedasticidad aunque es visible que no parecen cumplirse ninguno de los 2 criterios
+```{r,warning=F,message=F,echo=F}
+shapiro.test(leon_tb_l$Biomasa)#No se acepta la normalidad
+```
+No se puede aceptar la la distribución normal de los datos
+```{r,warning=F,message=F,echo=F}
+#Test de homogeneidad de varianzas
+leveneTest(leon_tb_l$Biomasa,leon_tb_l$año)#No se acepta la homocedasticidad
+```
+<div class=text-justify>
+Tampoco se puede aceptar la homocedasticidad de los datos de biomasa para los diferentes años.
+Por ello es preciso transformar los datos y ver si con ello podemos asumir un modelo lineal. Para ello determinaremos los valores de \lambda mediante la aplicación de una transformación de Box Cox
+</div>
+```{r,warning=F,message=F,echo=F}
+library(MASS)
+leon_tb_l<-droplevels.data.frame(subset(leon_l,leon_l$Gestion=="L"))
+(b<-boxcox(lm(leon_tb_l$Biomasa~1)))
+(c<-b$x[which.max(b$y)])
+#Transformamos los datos
+leon_tb_l$Biomasa<-(leon_tb_l$Biomasa)^c
+```
+Una vez transformado los datos visualizamos nuevamente
+```{r,warning=F,message=F,echo=F}
+hist(leon_tb_l$Biomasa)
+boxplot(leon_tb_l$Biomasa~leon_l$año)#Hay outliers y no se puede presumir normalidad.
+```
+Visualmente ahora parece que los datos pueden cumplir alos criterios de normalidad y homocedasticidad, pese a ello realizamos los test.
+```{r,warning=F,message=F,echo=F}
+shapiro.test(leon_tb_l$Biomasa)#Se acepta la normalidad
+```
+Se acepta la la distribución normal de los datos
+```{r,warning=F,message=F,echo=F}
+#Test de homogeneidad de varianzas
+leveneTest(leon_tb_l$Biomasa,leon_tb_l$año)#Se acepta la homocedasticidad
+```
+Se acepta la homocedasticidad
+<div class=text-justify>
+Planteamos ahora un modelo lineal mixto. Esto es conveniente en nuestro caso ya que podemos establecer una parte aleatoria del modelo con los datos anidados por la variable Estación. Como término fijo utilizaríamos la variable año, ya que se trata del factor principal que nos explica precisamente si existen diferencias en los valores de la biomasa considerando el año 2014 como el año que se produce el cambio de política de gestión al establecer los libres como libres sin muerte.
+Para la construcción del modelo seguimos el procedimiento que recomienda Zuur et al. (2009) y que se secuenciaría en fases:
+1) Estructura aleatoria óptima. Usando un modelo saturado (beyond optimal model), se determina la estructura óptima del componente aleatorio, la cual no debe contener información que esté en la componente fija. Debemos:
+• construir un modelo saturado.
+• comparar modelos con distinta estructura aleatoria, mediante máxima verosimilitud restringida (REML).
+2) Estructura fija óptima. Una vez encontramos la estructura aleatoria óptima, podemos encontrar la estructura fija óptima. Comparamos los modelos anidados mediante máxima verosimilitud (ML), manteniendo la misma estructura aleatoria.
+3) Ajuste del modelo final con REML.  
+</div>
+```{r,warning=F,message=F,echo=T}
+library(nlme)
+####PROCEDIMIENTO DE ZUUR PARA LA SELECCION DEL MODELO
+##1. Determinamos los efectos variables y para ello saturamos los efectos fijos
+leon_tb_l<-leon_tb_l[!is.na(leon_tb_l$Biomasa),]
+m1a<-gls(Biomasa~1+año,data=leon_tb_l,method="REML")
+m1b<-lme(Biomasa~1+año,random=~1|Estacion,data=leon_tb_l,method="REML")
+anova(m1a,m1b)#Efectivamente al año parece afectar a la VD, seleccionamos como variable aleatoria la estación.
+##2. Seleccionamos las variables de la estructura fija.
+m1c<-lme(Biomasa~1,random=~1|Estacion,data=leon_tb_l,method="ML")
+m1d<-lme(Biomasa~1+año,random=~1|Estacion,data=leon_tb_l,method="ML")
+anova(m1c,m1d)#El modelo m1d es el elegido
+##3. Ajuste del modelo final con el método REML
+m1d_final<-lme(Biomasa~1+año,random=~1|Estacion,method="REML",data=leon_tb_l)
+summary(m1d_final)#Diferencias entre 2017 y 2016 respecto de 2014
+```
+<div class=text-justify>
+
+El modelo final lo utilizamos patra contrastar los diferentes niveles de la variable predictora, en este caso los diferentes años mediante comparaciones múltiples mediante eltest de Tukey.
+Comrobamos el modelo de forma gráfica
+</div>
+```{r,warning=F,message=F,echo=F}
+# Ploteamos los datos del modelo
+plot(m1d_final)
+Res<-residuals(m1d_final, type="normalized")
+Fit<-fitted(m1d_final) #level=1
+# Residuos vs. predicciones
+op<-par(mfrow=c(2,2))
+plot(Res ~ Fit, xlab="Fitted values", ylab="Residuals", main="Residuals vs. fitted")
+abline(h=0)
+# Residuos vs. predictores (variables explicativas)
+plot(Res~leon_tb_l$Estacion, xlab="Estacion", ylab="Residuals")
+abline(h=0)
+plot(Res~leon_tb_l$año, xlab="Exposure", ylab="Residuals")
+abline(h=0)
+
+# Normalidad de los residuos
+par(op)
+hist(Res)
+qqnorm(Res)
+qqline(Res)
+
+```
+
+```{r,warning=F,message=F,echo=F}
+library(multcomp)
+MC<-glht(m1d_final,linfct=mcp(año="Tukey"))
+summary(MC)
+```
+<div class=text-justify>
+Podemos ver en la tabla de contrastes que para los datos de biomasa existen diferencias significativas de los datos del año 2014 respecto a los de 2017 en adelante, si exceptuamos el año 2018, año que parece producirse una reducción en la biomasa. 
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ### 2.1.2 CON LA VARIABLE DENSIDAD
 
