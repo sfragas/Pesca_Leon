@@ -36,7 +36,7 @@ datos$Nivel<-as.factor(datos$Nivel)
 datos$año<-as.factor(datos$año)
 
 #Hacemos una tabla exclusiva para Leon.
-leon<-datos[datos$Provincia=="Leon",]
+leon<-droplevels.data.frame(datos[datos$Provincia=="Leon",])
 #leon_1<-leon[leon$Nivel==1,]
 #leon_2<-leon[leon$Nivel==2,]
 leon_l<-subset(leon,leon$Gestion=="L")
@@ -61,7 +61,8 @@ sd<-function(x){  sqrt(var(x,na.rm=T))
 Media<-tapply(leon_l[,6],leon_l[,5],mean,na.rm=T)
 medias<-data.frame(Año=unique(leon_l$año),Medias=Media)
 Desv<-tapply(leon_l[,6],leon_l[,5],sd)
-knitr::kable(rbind(Media,Desv), caption = 'Valores medios y desviaciones estandar')
+tabla<-rbind(Media,Desv)
+knitr::kable(tabla, caption = 'Valores medios y desviaciones estandar')
 B<-ggplot(leon_l,aes(x=año,y=Biomasa))+ylab("gr/m2")+geom_bar(stat="summary",fun="mean")+ggtitle("Biomasas de trucha en los libres sm (provincia de León)")
 
 #B+annotate("text",x=1:5,y=c(3.67,6.2,7.08,8.51,6.83)+.3,label=c("3.67","6.2","7.08","8.51","6.83"),col="blue")
@@ -111,6 +112,8 @@ leon_tb_l<-droplevels.data.frame(subset(leon_l,leon_l$Gestion=="L"))
 leon_tb_l$Biomasa<-(leon_tb_l$Biomasa)^c
 #Visulaizamos los datos transformados
 hist(leon_tb_l$Biomasa)
+ggplot(data = leon_tb_l,aes(x=año,y=Biomasa))+geom_boxplot()+ggtitle("Boxplot de las biomasas transformadas")+labs(y="Biomasa transformada")
+
 #Comprobamos la normalidad
 shapiro.test(leon_tb_l$Biomasa)#Aceptamos la normalidad
 #Testa de homogeneidad de varianzas
@@ -188,6 +191,7 @@ leon_tb_l<-leon_tb_l[-which.min(leon_tb_l$Densidad),]#Retiramos el valor de 0 po
 leon_tb_l$Densidad<-(leon_tb_l$Densidad)^c
 #Visulaizamos los datos transformados
 hist(leon_tb_l$Densidad)
+ggplot(data = leon_tb_l,aes(x=año,y=Densidad))+geom_boxplot()+ggtitle("Boxplot de las densidades transformadas")+labs(y="Densidad transformada")
 #Comprobamos la normalidad
 shapiro.test(leon_tb_l$Densidad)#Aceptamos la normalidad
 #Testa de homogeneidad de varianzas
