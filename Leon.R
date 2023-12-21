@@ -6,6 +6,9 @@ setwd("~/Master_R/Temas_R/Pesca/CyL/Pesca_Leon")
 biom<-read.csv("Biomasa.csv",check.names = F)
 dens<-read.csv("densidades.csv",check.names = F)
 summary(biom)
+summary(dens)
+#Tenemos que eliminar los valores de 0 en densidad cuando haya valor de biomasa
+
 #El año de comienzo es
 colnames(biom)[grep(pattern = '2',colnames(biom))][1]
 #El último año será el
@@ -22,12 +25,16 @@ dens_long<-pivot_longer(dens,cols=3:10,names_to = "año",values_to = "Densidad")
 #colnames(dens_long)[6]<-c("Densidad")
 datos<-cbind(biom_long,dens_long[,6])
 colnames(datos)[7]<-c("Densidad")
+#Comprobamos la tabla de datos
+summary(datos)
+#Eliminamos los registros con densidad =0
+datos<-datos[!datos$Densidad==0,]
 #1.2 Añadimos el peso medio dividiendo Biomas entre Densidad
 datos<-(datos%>%mutate(Peso_medio=Biomasa/Densidad))
 #1.3 Redondeamos los castilla numericos para ajustarlos con 2 decimales
 datos$Peso_medio<-round(datos$Peso_medio,2)
 datos$Biomasa<-round(datos$Biomasa,2)
-datos$Densidad<-round(datos$Densidad,3)
+datos$Densidad<-round(datos$Densidad,4)
 #1.4 Indicamos factores en las variables nivel,gestion,provincia, Estacion,año
 datos$Estacion<-as.factor(datos$Estacion)
 datos$Provincia<-as.factor(datos$Provincia)
@@ -255,16 +262,6 @@ rbind(Media,Desv)
 
 
 
-
-
-
-
-
-
-
-
-
-
 leon_r<-subset(leon,leon$Biomasa!=is.na(leon$Biomasa))
 leon_r<-subset(leon_r,leon_r$Densidad!=is.na(leon_r$Densidad))
 
@@ -289,103 +286,139 @@ kruskal.test (leon_r_l$Peso_medio~leon_r_l$año)#Se rechaza la hipostesis nula
 kwAllPairsNemenyiTest(Peso_medio~año,data=leon_r_l,dist="Chisquare")#Se muestran diferencias significativas entre 2014 y 2015 y 2017
 
 
+#3. PARA LA VARIABLE PESO MEDIO -----------------------------------------
+
+# 3. ANÁLISIS DE LA VARIABLE PESO MEDIO
+#Otra variable determinada de las 2 anteriores por simple cocientre entre la biomasa y la densidad es el peso medio (gr/ind). Con ella podemos comprobar si desde 2014 ha habido variaciones significativas en la misma, también centrándonos en los tramos libres, desde la entrada de la normativa que exige la pesca sin muerte.
+
+  
+  ## 3.1 VISUALIZACIÓN DE LOS DATOS
+  
+#Vemos los datos
+leon_l<-subset(leon,leon$Gestion=="L")
+leon_l<-droplevels.data.frame(leon_l)
+summary(leon_l)
+#Variable densidad
+ggplot(leon,aes(x=año,y=Peso_medio,fill=Gestion))+ylab("gr/ind")+geom_boxplot()+facet_wrap(~Gestion,ncol=2)+ggtitle("Boxplot del peso en gr/ind para cada año y tipo de gestión en León")
+
+#Representamos las variables para los tramos libres, donde es previsible que se puedan observar con los efectos que se quieren comprobar por la introducción de la modalidad de sin muerte de forma general.
 
 
-##################ALETERNATIVA AL MODELO LINEAL MEDIANTE MODELOS MIXTOS (MM)
-CyL<-castilla_long[castilla_long$value<25&!is.na(castilla_long$value),]
-CyL$Estacion<-factor(CyL$Estacion)
-#Observamos los valores
-ggplot(CyL,aes(value))+geom_histogram()+facet_wrap(.~año)
-boxplot(CyL$value~CyL$año,xlab="Año",ylab="Densidad (g/m2)",main="castilla biomasa de trucha en CyL")
+#Variable densidad
+ggplot(leon_l,aes(x=año,y=Peso_medio,fill=Gestion))+geom_boxplot()+ggtitle("Boxplot de la variable peso medio por individuo de trucha en libres sin muerte")+theme(plot.title = element_text(size = rel(1.1)))
+
+# Se observa la existencia de outliers que para la comprobación de las comparaciones y realizar las comprobaciones de hipótesis deberá ser tenida en cuenta para elegir la tecnica estadística.
+#Determinamos a continuación los valores medios para cada año para los tramos de pesca libre, recogiéndose igualmente las desviaciones estandar de cada grupo.
+## 3.2 MEDIAS Y DESVIACIONES DE LA VARIABLE peso medio
+#Para los tramos libres de León, comprobamos los valores medios del peso medio de trucha (en gr/ind) en los diferentes años, así como los valores de la desviación estándar.
+#Para los valores de densidad
+#Retiramos el outlier de densidad por ser claros errores de codificación
+longitud<-function(x){
+  length(which(!is.na(x)))
+}
+tamaño_muestral<-data.frame(numero=tapply(leon_l[,8],leon_l[,5],longitud),año=unique(leon_l$año))
+sd<-function(x){sqrt(var(x,na.rm=T))
+}
+Media<-tapply(leon_l[,8],leon_l[,5],mean,na.rm=T)
+medias<-data.frame(Año=levels(leon_l$año),Medias=Media)
+Desv<-tapply(leon_l[,8],leon_l[,5],sd)
+knitr::kable(rbind(Media,Desv), caption = 'Valores medios y desviaciones estandar')
+#Se observa un aumento de los valores medios respecto a 2014.
+#Representamos la distribución mediante histograma de la variable densidad
+
+B<-ggplot(leon_l,aes(x=año,y=Peso_medio))+ylab("ind/m2")+geom_bar(stat="summary",fun="mean")+ggtitle("Peso medio de trucha en los libres sm (provincia de León)")
+c<-B+geom_text(data=medias,aes(x=as.factor(Año),y=Medias,label=paste(round(Medias,2))),nudge_y=2,nudge_x=-.3)+stat_summary(fun.data = mean_se,geom="errorbar",linewidth = 1,width = 0.2)
+c+geom_text(data=tamaño_muestral,aes(x=as.factor(año),y=rep(-1.5,length(unique(leon_l$año))),label=paste("n= ",numero)))
+
+
+## 2.3 MODELO PARA LA COMPARACIÓN DEL PESO MEDIO
+#Para la comparación de los grupos optamos en primer lugar por observar los datos y ver los supuestos para adaptarlo a un modelo lineal.
+#Comprobamos la normalidad y la homocedasticidad. 
+#Primero los visualizamos
+
+hist(leon_l$Peso_medio)
+boxplot(leon_l$Peso_medio~leon_l$año)#Hay outliers y no se puede presumir normalidad.
+
+
+#Comprobamos la normalidad y homocedasticidad aunque es visible que no parecen cumplirse ninguno de los 2 criterios
+shapiro.test(leon_l$Peso_medio)#No se acepta la normalidad
+
+#No se puede aceptar la la distribución normal de los datos
+#Test de homogeneidad de varianzas
+leveneTest(leon_l$Peso_medio,leon_l$año)#Se acpta la homocedasticidad
+
+#Por ello es preciso transformar los datos y ver si con ello podemos asumir un modelo lineal. Para ello determinaremos los valores de \lambda mediante la aplicación de una transformación de Box Cox
+
+library(MASS)
+leon_tb_l<-droplevels.data.frame(leon_l)
+(b<-boxcox(lm(leon_tb_l$Peso_medio~1)))
+(c<-b$x[which.max(b$y)])
+#Transformamos los datos
+leon_tb_l$Peso_medio<-(leon_tb_l$Peso_medio)^c
+#Una vez transformado los datos visualizamos nuevamente
+
+hist(leon_tb_l$Peso_medio)
+ggplot(data = leon_tb_l,aes(x=año,y=Peso_medio))+geom_boxplot()+ggtitle("Boxplot del peso medio transformado")+labs(y="Peso medio transformadO")
+#Hay outliers y no se puede presumir normalidad.
+#Visualmente ahora parece que los datos pueden cumplir alos criterios de normalidad y homocedasticidad, pese a ello realizamos los test.
+shapiro.test(leon_tb_l$Peso_medio)#Se acepta la normalidad
+#Se acepta la la distribución normal de los datos
+#Test de homogeneidad de varianzas
+leveneTest(leon_tb_l$Peso_medio,leon_tb_l$año)#Se acepta la homocedasticidad
+#Se acepta la homocedasticidad
+#Planteamos ahora un modelo lineal mixto. Esto es conveniente en nuestro caso ya que podemos establecer una parte aleatoria del modelo con los datos anidados por la variable Estación. Como término fijo utilizaríamos la variable año, ya que se trata del factor principal que nos explica precisamente si existen diferencias en los valores de la densidad considerando el año 2014 como el año que se produce el cambio de política de gestión al establecer los libres como libres sin muerte.
+#Para la construcción del modelo seguimos el procedimiento que recomienda Zuur et al. (2009) y que se secuenciaría en fases:
+#1) Estructura aleatoria óptima. Usando un modelo saturado (beyond optimal model), se determina la estructura óptima del componente aleatorio, la cual no debe contener información que esté en la componente fija. Debemos:
+#• construir un modelo saturado.
+#• comparar modelos con distinta estructura aleatoria, mediante máxima verosimilitud restringida (REML).
+#2) Estructura fija óptima. Una vez encontramos la estructura aleatoria óptima, podemos encontrar la estructura fija óptima. Comparamos los modelos anidados mediante máxima verosimilitud (ML), manteniendo la misma estructura aleatoria.
+#3) Ajuste del modelo final con REML.  
 library(nlme)
 ####PROCEDIMIENTO DE ZUUR PARA LA SELECCION DEL MODELO
 ##1. Determinamos los efectos variables y para ello saturamos los efectos fijos
-m1a<-gls(value~1+año,data=CyL,method="REML")
-m1b<-lme(value~1+año,random=~1|Estacion,data=CyL,method="REML")
-anova(m1a,m1b)#Efectivamente al año parece afectar a la VD, seleccionamos como variable añeatoria la estación.
+leon_tb_l<-leon_tb_l[!is.na(leon_tb_l$Peso_medio),]
+m1a<-gls(Peso_medio~1+año,data=leon_tb_l,method="REML")
+m1b<-lme(Peso_medio~1+año,random=~1|Estacion,data=leon_tb_l,method="REML")
+anova(m1a,m1b)#Efectivamente al año parece afectar a la VD, seleccionamos como variable aleatoria la estación.
 ##2. Seleccionamos las variables de la estructura fija.
-m1c<-lme(value~1,random=~1|Estacion,data=CyL,method="ML")
-m1d<-lme(value~1+año,random=~1|Estacion,data=CyL,method="ML")
+m1c<-lme(Peso_medio~1,random=~1|Estacion,data=leon_tb_l,method="ML")
+m1d<-lme(Peso_medio~1+año,random=~1|Estacion,data=leon_tb_l,method="ML")
 anova(m1c,m1d)#El modelo m1d es el elegido
 ##3. Ajuste del modelo final con el método REML
-m1d_final<-lme(value~1+año,random=~1|Estacion,method="REML",data=CyL)
+m1d_final<-lme(Peso_medio~1+año,random=~1|Estacion,method="REML",data=leon_tb_l)
 summary(m1d_final)#Diferencias entre 2017 y 2016 respecto de 2014
-#Hacemos comparaciones multiples
+#El modelo final lo utilizamos patra contrastar los diferentes niveles de la variable predictora, en este caso los diferentes años mediante comparaciones múltiples mediante eltest de Tukey.
+#Comrobamos el modelo de forma gráfica
+
+# Ploteamos los datos del modelo
+plot(m1d_final)
+Res<-residuals(m1d_final, type="normalized")
+Fit<-fitted(m1d_final) #level=1
+# Residuos vs. predicciones
+op<-par(mfrow=c(2,2))
+plot(Res ~ Fit, xlab="Fitted values", ylab="Residuals", main="Residuals vs. fitted")
+abline(h=0)
+# Residuos vs. predictores (variables explicativas)
+plot(Res~leon_tb_l$Estacion, xlab="Estacion", ylab="Residuals")
+abline(h=0)
+plot(Res~leon_tb_l$año, xlab="Exposure", ylab="Residuals")
+abline(h=0)
+
+# Normalidad de los residuos
+par(op)
+hist(Res)
+qqnorm(Res)
+qqline(Res)
 library(multcomp)
 MC<-glht(m1d_final,linfct=mcp(año="Tukey"))
 summary(MC)
-#Se observan diferencias significativas entre 2014 y 2017 y 2017 con 2015 y2018
-
-CyL$año<-relevel(CyL$año,ref="X2017")#Comparamos con 2017 el año con media mas elevada
-m1d_final<-lme(value~1+año,random=~1|Estacion,method="REML",data=CyL)
-summary(m1d_final)#Es significativamente superior a todos excepto a 2016
-
-
-
-
-#Ploteamos los resultados
-Res <- residuals(m1d_final, type = "normalized")
-Fit <- fitted(m1d_final)
-par(mfrow = c(2, 2))
-plot(Res ~ Fit, xlab = "Fitted values", ylab = "Residuals", main = "Residuals vs. fitted")
-abline(h = 0)
-boxplot(Res ~ CyL$año, ylab = "Residuals", main = "Treatment")
-abline(h = 0, lty = 3)
-hist(Res, main = "Histogram of residuals", xlab = "Residuals")
-qqnorm(Res)
-qqline(Res)
-library(lme4)
-ezmodel<-ezMixed(CyL,dv=.(value),random = .(Estacion),fixed = .(año))
-summary(ezmodel)
-ezmodel$models
-##################castilla de Leon#########################################################
-
-par(mfrow=c(1,1))
-#leon<-castilla_long[castilla_long$Provincia=="Leon",]
-#eliminamos los NA´s
-leon<-leon[!is.na(leon$Biomasa),]
-#Comprobamos supuestos para modelos lineales
-shapiro.test(leon$Biomasa)#No se puede presuponer normalidad
-leveneTest(leon$Biomasa,leon$año)#Presumimos homogeneidad de varianzas
-#Pese a no cumplir supuestos para un modelo lineal hacemos el anova
-lm(leon$Biomasa~leon$año)
-boxplot(leon$Biomasa~leon$año,xlab="Año",ylab="Densidad (g/m2)",main="Biomasas de trucha en León")
-ml1<-aov(leon$Biomasa~leon$año)
-summary(ml1)#Significación marginal
-TukeyHSD(ml1)#Hay diferencia marginal entre el año 2014 y 2017 el resto no muestra diferencias significativas
-
-#Consideramos medias repetidas
-library(ez)
-library(WRS2)
-#Eliminamos los casos faltantes para balancear los castilla
-remover<-function(data,dv,wid,with) {
-  dato<-data[!is.na(data[,dv]),]
-  tabla<-table(dato[,wid])
-  completo<-labels(which(tabla==length(unique(dato[,with]))))
-  leon<<-dato[dato[,wid]%in%completo,]
-}
-remover(leon,4,1,3)
-ezANOVA(leon,dv=Biomasa,wid=Estacion,within=año)#Se muestran diferencias significativas asumiendo la corrección de la esfericidad.
-#Hacemos comparaciones posthoc
-with(leon,pairwise.t.test(value,año,p.adjust.method = "bonferroni",paired=T))#No se aprecian diferencias significativas
-#Ploteamos las medias anuales
-library(gplots)
-plotmeans(value~año,xlab="Año",ylab="g/m2", main="Mean Plot\nwith 95% CI",data=leon)
-
-#sin eliminar las estaciones con castilla faltantes analizamos el modelo mixto
-leon<-castilla_long[castilla_long$Provincia=="Leon",]
-#eliminamos los NA´s
-leon<-leon[!is.na(leon$value),]
-#Observamos los valores
-ggplot(leon,aes(value))+geom_histogram()+facet_wrap(.~año)
-boxplot(leon$value~leon$año,xlab="Año",ylab="Densidad (g/m2)",main="castilla biomasa de trucha en CyL")
-library(nlme)
-ml2<-lme(value~año,random=~1|Estacion,data=leon)
-summary(ml2)
-#Representamos los valores medios
-
-plotmeans(value~año,xlab="Año",ylab="g/m2", main="Mean Plot\nwith 95% CI",data=leon)
-
+#Podemos ver en la tabla de contrastes que para los datos de biomasa existen diferencias significativas de los datos del año 2014 respecto a los de 2017 en adelante. 
+#Aplicamos modelos robustos
+#Comparamos los valores de peso medio para los diferentes años
+rmanova(y=leon_tb_l$Peso_medio,groups=leon_tb_l$año,block=leon_tb_l$Estacion)
+rmmcp(y=leon_tb_l$Peso_medio,groups=leon_tb_l$año,block=leon_tb_l$Estacion)
+library(robustlmm)
+rlmer(Peso_medio~1+año+(1|Estacion),data=leon_tb_l)
 
 
 
