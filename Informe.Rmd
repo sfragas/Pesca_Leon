@@ -18,7 +18,7 @@ output:
     toc: yes
     toc_depth: '5'
 ---
-```{r,warning=F,message=F,tidy=F,echo=F,eval=FALSE,error=FALSE}
+```{r,warning=F,message=F,tidy=F,echo=F,error=FALSE}
 #setwd("~/Master_R/Temas_R/Pesca/CyL")
 biom<-read.csv("Biomasa.csv",check.names = F)
 dens<-read.csv("densidades.csv",check.names = F)
@@ -38,7 +38,7 @@ A partir de los datos publicados del seguimiento de las poblaciones piscícolas 
 Por todo ello procede determinar si la declaración de las aguas libres como libres sin muerte ha supuesto una variación en las variables poblacionales estudiadas.
 </div>
 
-```{r,warning=F,message=F,tidy=F,echo=F,error=FALSE}
+```{r,warning=F,message=F,tidy=F,echo=T,error=FALSE}
 #Cambiamos de formato de los datos
 library(tidyr)
 biom_long<-pivot_longer(biom,cols=3:10,names_to="año",values_to = "Biomasa")
@@ -167,6 +167,7 @@ boxplot(leon_l$Biomasa~leon_l$año)#Hay outliers y no se puede presumir normalid
 
 Comprobamos la normalidad y homocedasticidad aunque es visible que no parecen cumplirse ninguno de los 2 criterios
 ```{r,warning=F,message=F,echo=F}
+leon_tb_l<-droplevels.data.frame(subset(leon_l,leon_l$Gestion=="L"))
 shapiro.test(leon_tb_l$Biomasa)#No se acepta la normalidad
 ```
 No se puede aceptar la la distribución normal de los datos
@@ -350,8 +351,10 @@ Por ello es preciso transformar los datos y ver si con ello podemos asumir un mo
 </div>
 ```{r,warning=F,message=F,echo=F}
 library(MASS)
-leon_tb_l<-droplevels.data.frame(leon_l)
-(b<-boxcox(lm(leon_tb_l$Densidad~1)))
+leon_tb_l<-droplevels.data.frame(subset(leon_l,leon_l$Gestion=="L"))
+leon_tb_l<-leon_tb_l[-which.max(leon_tb_l$Densidad),]#Retiramos el máximo por ser un error
+leon_tb_l<-leon_tb_l[which(leon_tb_l$Densidad>0),]#Retiramos el valor de 0 por ser un error
+(b<-boxcox(lm((leon_tb_l$Densidad)~1)))
 (c<-b$x[which.max(b$y)])
 #Transformamos los datos
 leon_tb_l$Densidad<-(leon_tb_l$Densidad)^c
@@ -463,7 +466,7 @@ ggplot(leon_l,aes(x=año,y=Peso_medio,fill=Gestion))+geom_boxplot()+ggtitle("Box
 Se observa la existencia de outliers que para la comprobación de las comparaciones y realizar las comprobaciones de hipótesis deberá ser tenida en cuenta para elegir la tecnica estadística.
 Determinamos a continuación los valores medios para cada año para los tramos de pesca libre, recogiéndose igualmente las desviaciones estandar de cada grupo.
 </div>
-## 3.2 MEDIAS Y DESVIACIONES DE LA VARIABLE peso medio
+## 3.2 MEDIAS Y DESVIACIONES DE LA VARIABLE PESO MEDIO
 <div class=text-justify>
 Para los tramos libres de León, comprobamos los valores medios del peso medio de trucha (en gr/ind) en los diferentes años, así como los valores de la desviación estándar.
 </div>
@@ -519,7 +522,10 @@ Por ello es preciso transformar los datos y ver si con ello podemos asumir un mo
 </div>
 ```{r,warning=F,message=F,echo=F}
 library(MASS)
-leon_tb_l<-droplevels.data.frame(leon_l)
+leon_l<-subset(leon,leon$Gestion=="L")
+leon_l<-droplevels.data.frame(leon_l)
+#all(is.finite(leon_l$Peso_medio))
+leon_l<-leon_l[which(is.finite(leon_l$Peso_medio)),]
 (b<-boxcox(lm(leon_tb_l$Peso_medio~1)))
 (c<-b$x[which.max(b$y)])
 #Transformamos los datos

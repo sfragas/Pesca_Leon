@@ -190,8 +190,10 @@ boxplot(leon_l$Densidad~leon_l$año)#Hay outliers y no se puede presumir normali
 #Transformamos los datos
 library(MASS)
 leon_tb_l<-droplevels.data.frame(subset(leon_l,leon_l$Gestion=="L"))
-leon_tb_l<-leon_tb_l[-which.max(leon_tb_l$Densidad),]#Retiramos el máximo por ser un error
+summary(leon_tb_l$Densidad)
+leon_tb_l<-leon_tb_l[which(leon_tb_l$Densidad>0),]#Retiramos el máximo por ser un error
 leon_tb_l<-leon_tb_l[-which.min(leon_tb_l$Densidad),]#Retiramos el valor de 0 por ser un error
+
 (b<-boxcox(lm((leon_tb_l$Densidad)~1)))
 (c<-b$x[which.max(b$y)])
 #Transformamos los datos
@@ -297,6 +299,8 @@ kwAllPairsNemenyiTest(Peso_medio~año,data=leon_r_l,dist="Chisquare")#Se muestra
 #Vemos los datos
 leon_l<-subset(leon,leon$Gestion=="L")
 leon_l<-droplevels.data.frame(leon_l)
+all(is.finite(leon_l$Peso_medio))
+leon_l<-leon_l[which(is.finite(leon_l$Peso_medio)),]
 summary(leon_l)
 #Variable densidad
 ggplot(leon,aes(x=año,y=Peso_medio,fill=Gestion))+ylab("gr/ind")+geom_boxplot()+facet_wrap(~Gestion,ncol=2)+ggtitle("Boxplot del peso en gr/ind para cada año y tipo de gestión en León")
@@ -418,9 +422,13 @@ summary(MC)
 rmanova(y=leon_tb_l$Peso_medio,groups=leon_tb_l$año,block=leon_tb_l$Estacion)
 rmmcp(y=leon_tb_l$Peso_medio,groups=leon_tb_l$año,block=leon_tb_l$Estacion)
 library(robustlmm)
-rlmer(Peso_medio~1+año+(1|Estacion),data=leon_tb_l)
-
-
-
-
-
+library(Matrix)
+library(lme4)
+lmer(Peso_medio~1+año+(1|Estacion),data=leon_tb_l)   
+robust_model<-rlmer(Peso_medio~1+año+(1|Estacion),data=leon_tb_l)
+summary(robust_model) 
+aov(robust_model)
+#Comparamos los diferentes años
+library(multcomp)
+MC<-glht(robust_model,linfct=mcp(año="Tukey"))
+summary(MC)
