@@ -297,10 +297,15 @@ kwAllPairsNemenyiTest(Peso_medio~año,data=leon_r_l,dist="Chisquare")#Se muestra
   ## 3.1 VISUALIZACIÓN DE LOS DATOS
   
 #Vemos los datos
+leon<-droplevels.data.frame(datos[datos$Provincia=="Leon",])
 leon_l<-subset(leon,leon$Gestion=="L")
+leon_CSM<-subset(leon,leon$Gestion=="CSM")
+leon_CCM<-subset(leon,leon$Gestion=="CCM")
+leon_CM<-subset(leon,leon$Gestion=="CM")
 leon_l<-droplevels.data.frame(leon_l)
-all(is.finite(leon_l$Peso_medio))
 leon_l<-leon_l[which(is.finite(leon_l$Peso_medio)),]
+#Retiramos el outlier de densidad por ser claros errores de codificación
+leon_l<-leon_l[-which.max(leon_l$Densidad),]#Retiramos el valor maximo por ser un error
 summary(leon_l)
 #Variable densidad
 ggplot(leon,aes(x=año,y=Peso_medio,fill=Gestion))+ylab("gr/ind")+geom_boxplot()+facet_wrap(~Gestion,ncol=2)+ggtitle("Boxplot del peso en gr/ind para cada año y tipo de gestión en León")

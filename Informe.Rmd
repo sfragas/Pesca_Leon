@@ -462,8 +462,12 @@ leon_CSM<-subset(leon,leon$Gestion=="CSM")
 leon_CCM<-subset(leon,leon$Gestion=="CCM")
 leon_CM<-subset(leon,leon$Gestion=="CM")
 leon_l<-droplevels.data.frame(leon_l)
+leon_l<-leon_l[which(is.finite(leon_l$Peso_medio)),]
+#Retiramos el outlier de densidad por ser claros errores de codificación
+leon_l<-leon_l[-which.max(leon_l$Densidad),]#Retiramos el valor maximo por ser un error
 summary(leon_l)
-#Variable densidad
+
+#Variable peso medio
 ggplot(leon,aes(x=año,y=Peso_medio,fill=Gestion))+ylab("gr/ind")+geom_boxplot()+facet_wrap(~Gestion,ncol=2)+ggtitle("Boxplot del peso en gr/ind para cada año y tipo de gestión en León")
 ```
 
@@ -483,8 +487,7 @@ Para los tramos libres de León, comprobamos los valores medios del peso medio d
 </div>
 ```{r,warning=F,message=F,echo=F,error=FALSE}
 #Para los valores de densidad
-#Retiramos el outlier de densidad por ser claros errores de codificación
-leon_l<-leon_l[-which.max(leon_l$Densidad),]#Retiramos el valor maximo por ser un error
+
 #leon_l<-leon_l[-which.min(leon_l$Densidad),]#Retiramos el valor 0 en la densidad
 leon_l<-droplevels.data.frame(leon_l[!is.na(leon_l$Densidad),])
 longitud<-function(x){
@@ -508,6 +511,7 @@ c<-B+geom_text(data=medias,aes(x=as.factor(Año),y=Medias,label=paste(round(Medi
 c+geom_text(data=tamaño_muestral,aes(x=as.factor(año),y=rep(-2,length(unique(leon_l$año))),label=paste("n= ",numero)))
 
 ```    
+
 ## 2.3 MODELO PARA LA COMPARACIÓN DEL PESO MEDIO
 Para la comparación de los grupos optamos en primer lugar por observar los datos y ver los supuestos para adaptarlo a un modelo lineal.
 Comprobamos la normalidad y la homocedasticidad. 
@@ -625,8 +629,8 @@ Podemos ver en la tabla de contrastes que para los datos de peso medio existen d
 <div class=text-justify>
 De los resultados obtenidos para la provincia de León que es la provincia con mayor número de estaciones de muestreo, se observa que tanto para las variables biomasa como para la densidad esta aumenta en todos los años en comparación con el año base (2014) aunque los efectos son significativos para los años 2017, 2019, 2020 y 2021 en el caso de la biomasa de trucha y para los años 2017, 2018, 2019, 2020 y 2021 en el caso de la densidad.
 
-Existen bastantes incógnitas que dificultan explicar en mayor profundidad los resultados obtenidos. Llama la atención los pobres valores en biomasa obtenidos, especialmente para Castilla, por debajo de los 5g/m2 en todos los años. Pero incluso aún siendo mejores en León, tampoco son valores especialmente destacables si los comparamos con otrso datos obtenidos en otras comunidades autónomas. Esto habría que analizarlo, y determinar si puede deberse a una elección de estaciones o de la metodología o práctica de los muestreos. Por otro lado los valores de densidades muestran valores medios para castilla. En el caso de León, los valores de densidad son mas altos siendo superiores a los 0,2 indv/m2 todos los años a partir de 2014. Este año de referencia arrojaba valores medios inferiores a 0,1 indv/m2.
-
+Debidoa la falta de datros ambientales, tales como factores hidrológicos, composición y estructura del hábitat que caractericen las esptaciones es imposible profundizar en parámetros exc¡plicativos. Igualmente al no ser publicados las estructuras de las poblaciones de trucha inventariadas tampoco conocemos los parámetros poblacionales principales que nos ayuden a comprender la situación en profundidad. Mortalidad, crecimiento o producción, parámetros estros relevantes para una mejor comprensión de las dinámicas poblacionales no es posible determinarlas al no haber sido publicadas las existencias por cohortes de las poblaciones inventariadas.
+No obstante el análisis de densidades, biomasas y en menor mediada el peso medio, entre los diferentes años desde el 2014, parecen clarso al mostrar los datos un claro incremento en los valores de la biomasa de trucha y sobre todo en las densidades, que han visto multiplicado por 3 los valores de 2014 y por 2 en el caso de la biomasa.
 La variable peso medio, sufre una ligera disminución ya que siendo determinada como el cociente entre la biomasa unitaria y la densidad unitaria, y debido a que el aumento de la densidad ha sido superior al aumento en biomasa, este valor ha disminuido aunque no de forma significativa, y mas claramente para León.
 
 Para analizar con más profundidad estos datos sería relevante determinar para las estaciones de muestreo la estructura de cohortes, parámetros de crecimiento y mortalidad. Con ello se podría determinar con más precisión el alcance de estos valores de peso medio.
