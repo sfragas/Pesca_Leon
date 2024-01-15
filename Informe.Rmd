@@ -25,10 +25,10 @@ dens<-read.csv("densidades.csv",check.names = F)
 #summary(biom)
 #summary(dens)
 #El año de comienzo es
-colnames(biom)[grep(pattern = '2',colnames(biom))][1]
+#colnames(biom)[grep(pattern = '2',colnames(biom))][1]
 #El último año será el
 a<-length(colnames(biom)[grep(pattern = '2',colnames(biom))])
-colnames(biom)[grep(pattern = '2',colnames(biom))][a]
+#colnames(biom)[grep(pattern = '2',colnames(biom))][a]
 #Se muestra la estructura de los datos en formato ancho para ambos data frames. Posteriormente se transformarán en formato largo para poder procesar la información de forma adecuada a los procedimientos utilizados
 ```
 
@@ -86,7 +86,7 @@ leon_CM<-subset(leon,leon$Gestion=="CM")
 leon_l<-droplevels.data.frame(leon_l)
 ```
 <div class=text-justify>
-Preparamos los datos. Antes de comenzar con el análisis mostramos la estructura de los datos una vez tabulados. Estos datos se han extraído de los informes publicados por la Junta de Castilla Y León correspondientes con las redes de vigilancia y seguimineto [link] (https://medioambiente.jcyl.es/web/es/caza-pesca/informes-seguimiento-control-poblaciones.html).
+Preparamos los datos. Antes de comenzar con el análisis mostramos la estructura de los datos una vez tabulados. Estos datos se han extraído de los informes publicados por la Junta de Castilla Y León correspondientes con las redes de vigilancia y seguimineto [link](https://medioambiente.jcyl.es/web/es/caza-pesca/informes-seguimiento-control-poblaciones.html).
 Se ha creado unn data frame para la provincia de León que comprende las siguientes variables:
 </div>
 ```{r,warning=F,message=F,echo=F}
@@ -155,6 +155,7 @@ c<-B+geom_text(data=medias,aes(x=as.factor(Año),y=Medias,label=paste(round(Medi
 c+geom_text(data=tamaño_muestral,aes(x=as.factor(año),y=rep(-0.3,length(unique(leon_l$año))),label=paste("n= ",numero)))
 
 ```    
+
 ## 2.3 MODELO PARA LA COMPARACIÓN DE LA BIOMASA
 Para la comparación de los grupos optamos en primer lugar por observar los datos y ver los supuestos para adaptarlo a un modelo lineal.
 Comprobamos la normalidad y la homocedasticidad. 
@@ -193,6 +194,7 @@ hist(leon_tb_l$Biomasa)
 ggplot(data = leon_tb_l,aes(x=año,y=Biomasa))+geom_boxplot()+ggtitle("Boxplot de las biomasas transformadas")+labs(y="Biomasa transformada")
 #Hay outliers y no se puede presumir normalidad.
 ```
+
 Visualmente ahora parece que los datos pueden cumplir alos criterios de normalidad y homocedasticidad, pese a ello realizamos los test.
 ```{r,warning=F,message=F,echo=F}
 shapiro.test(leon_tb_l$Biomasa)#Se acepta la normalidad
@@ -202,17 +204,24 @@ Se acepta la la distribución normal de los datos
 #Test de homogeneidad de varianzas
 leveneTest(leon_tb_l$Biomasa,leon_tb_l$año)#Se acepta la homocedasticidad
 ```
+
 Se acepta la homocedasticidad
 <div class=text-justify>
 Planteamos ahora un modelo lineal mixto. Esto es conveniente en nuestro caso ya que podemos establecer una parte aleatoria del modelo con los datos anidados por la variable Estación. Como término fijo utilizaríamos la variable año, ya que se trata del factor principal que nos explica precisamente si existen diferencias en los valores de la biomasa considerando el año 2014 como el año que se produce el cambio de política de gestión al establecer los libres como libres sin muerte.
 Para la construcción del modelo seguimos el procedimiento que recomienda Zuur et al. (2009) y que se secuenciaría en fases:
-1) Estructura aleatoria óptima. Usando un modelo saturado (beyond optimal model), se determina la estructura óptima del componente aleatorio, la cual no debe contener información que esté en la componente fija. Debemos:
-• construir un modelo saturado.
-• comparar modelos con distinta estructura aleatoria, mediante máxima verosimilitud restringida (REML).
-2) Estructura fija óptima. Una vez encontramos la estructura aleatoria óptima, podemos encontrar la estructura fija óptima. Comparamos los modelos anidados mediante máxima verosimilitud (ML), manteniendo la misma estructura aleatoria.
-3) Ajuste del modelo final con REML.  
+
+1.Estructura aleatoria óptima. Usando un modelo saturado (beyond optimal model), se determina la estructura óptima del componente aleatorio, la cual no debe contener información que esté en la componente fija. 
+Debemos:
+
+  + construir un modelo saturado.
+
+  + comparar modelos con distinta estructura aleatoria, mediante máxima verosimilitud restringida (REML).
+
+2.Estructura fija óptima. Una vez encontramos la estructura aleatoria óptima, podemos encontrar la estructura fija óptima. Comparamos los modelos anidados mediante máxima verosimilitud (ML), manteniendo la misma estructura aleatoria.
+
+3.Ajuste del modelo final con REML.  
 </div>
-```{r,warning=F,message=F,echo=T}
+```{r,warning=F,message=F,echo=F}
 library(nlme)
 ####PROCEDIMIENTO DE ZUUR PARA LA SELECCION DEL MODELO
 ##1. Determinamos los efectos variables y para ello saturamos los efectos fijos
@@ -326,7 +335,8 @@ c<-B+geom_text(data=medias,aes(x=as.factor(Año),y=Medias,label=paste(round(Medi
 c+geom_text(data=tamaño_muestral,aes(x=as.factor(año),y=rep(-0.02,length(unique(leon_l$año))),label=paste("n= ",numero)))
 
 ```    
-## 2.3 MODELO PARA LA COMPARACIÓN DE LA BIOMASA
+
+## 2.3 MODELO PARA LA COMPARACIÓN DE LA DENSIDAD
 Para la comparación de los grupos optamos en primer lugar por observar los datos y ver los supuestos para adaptarlo a un modelo lineal.
 Comprobamos la normalidad y la homocedasticidad. 
 Primero los visualizamos
@@ -365,6 +375,7 @@ hist(leon_tb_l$Densidad)
 ggplot(data = leon_tb_l,aes(x=año,y=Densidad))+geom_boxplot()+ggtitle("Boxplot de las densidades transformadas")+labs(y="Densidad transformada")
 #Hay outliers y no se puede presumir normalidad.
 ```
+
 Visualmente ahora parece que los datos pueden cumplir alos criterios de normalidad y homocedasticidad, pese a ello realizamos los test.
 ```{r,warning=F,message=F,echo=F}
 shapiro.test(leon_tb_l$Densidad)#Se acepta la normalidad
