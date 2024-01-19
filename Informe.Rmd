@@ -3,17 +3,17 @@ title: "Analisis poblaciones de trucha en León"
 author: "Santiago Fraga Sáenz"
 date: "13/12/2023"
 output:
+  pdf_document:
+    toc: yes
+    toc_depth: 5
+  fontsize: 22pt
+  geometry: margin=.5in 
   html_document:
     toc: yes
     toc_depth: 5
     toc_float:
       collapsed: no
       smooth_scroll: yes
-  fontsize: 22pt
-  geometry: margin=.5in 
-  pdf_document:
-    toc: yes
-    toc_depth: 5
   word_document:
     toc: yes
     toc_depth: '5'
@@ -95,13 +95,28 @@ summary(leon)
 ```
 <div class=text-justify>
 Las variables Estación, Provincia, Gestión, Nivel y año son de tipo factor y el resto numéricas. Dentro de la gestión diferenciamos los siguientes niveles en función del tramo en el que se situó la estación de muestreo:
+
 L= Tramo libre
+
 CCM= Coto con muerte mixto
+
 V= Vedado
+
 CM= coto con muerte
+
 AREC= Aguas en régimen especial controlado
+
 ARE= Aguas en regimen especial
+
 CSM= Coto sin muerte
+
+Los datos de las variables métricas de las poblaciones de trucha son:
+
+Biomasa; medida en gr/m2
+
+Densidad; medido en indv/m2
+
+Peso medio: Resultado de dividir la biomasa entre la densidad, medida en gr/indv
 </div>
 # 2. ANÁLISIS DE LA VARIABLE BIOMASA
 <div class=text-justify>
@@ -115,9 +130,9 @@ Observamos en primer lugar la distribución de las variables poblacionales, como
 #Variable biomasa
 ggplot(leon,aes(x=año,y=Biomasa,fill=Gestion))+ylab("g/m2")+geom_boxplot()+facet_wrap(~Gestion,ncol=2)+ggtitle("Boxplot de la biomasa de trucha para cada año y tipo de gestión en León")
 ```
-
-Representamos las variables para los tramos libres, donde es previsible que se puedan observar con los efectos que se quieren comprobar.
-
+<div class=text-justify>
+Representamos las variables para los tramos libres, donde es previsible que se puedan observar con los efectos que se quieren comprobar, ya que en ellos la gestión ha pasado de poder sacrificarse las capturas que superasen la talla mínima sin un control de acceso del número de pescadores a ser tramos donde el sacrificio está prohibido, y todo este se produce por primera vez en el año 2014. Por ello este año es el año de referencia con el que se compararán el resto de años para observar si hay cambios significativos en las variables medidas.
+</div>
 ```{r,warning=F,message=F,echo=F,fig.height=7,fig.width=7}
 #Variable biomasa
 ggplot(leon_l,aes(x=año,y=Biomasa,fill=Gestion))+geom_boxplot()+ggtitle("Boxplot de la biomasa de trucha en libres sin muerte 
@@ -178,16 +193,22 @@ leveneTest(leon_tb_l$Biomasa,leon_tb_l$año)#No se acepta la homocedasticidad
 ```
 <div class=text-justify>
 Tampoco se puede aceptar la homocedasticidad de los datos de biomasa para los diferentes años.
-Por ello es preciso transformar los datos y ver si con ello podemos asumir un modelo lineal. Para ello determinaremos los valores de \lambda mediante la aplicación de una transformación de Box Cox
+Por ello es preciso transformar los datos y ver si con ello podemos asumir un modelo lineal. Para ello determinaremos los valores de $\lambda$ mediante la aplicación de una transformación de Box Cox
 </div>
 ```{r,warning=F,message=F,echo=F}
 library(MASS)
 leon_tb_l<-droplevels.data.frame(subset(leon_l,leon_l$Gestion=="L"))
-(b<-boxcox(lm(leon_tb_l$Biomasa~1)))
-(c<-b$x[which.max(b$y)])
+b<-boxcox(lm(leon_tb_l$Biomasa~1))
+c<-b$x[which.max(b$y)]
+```
+<div class=text-justify>
+El valor de $\lambda$ obtenido es `r b$x[which.max(b$y)]` es el valor de la potencia usada en la transformación de los datos.
+</div>
+```{r, warning=F,message=F,echo=F}
 #Transformamos los datos
 leon_tb_l$Biomasa<-(leon_tb_l$Biomasa)^c
 ```
+
 Una vez transformado los datos visualizamos nuevamente
 ```{r,warning=F,message=F,echo=F}
 hist(leon_tb_l$Biomasa)
@@ -221,7 +242,7 @@ Debemos:
 
 3.Ajuste del modelo final con REML.  
 </div>
-```{r,warning=F,message=F,echo=F}
+```{r,warning=F,message=F,echo=T}
 library(nlme)
 ####PROCEDIMIENTO DE ZUUR PARA LA SELECCION DEL MODELO
 ##1. Determinamos los efectos variables y para ello saturamos los efectos fijos
@@ -357,18 +378,23 @@ leveneTest(leon_l$Densidad,leon_l$año)#No se acepta la homocedasticidad
 ```
 <div class=text-justify>
 Tampoco se puede aceptar la homocedasticidad de los datos de densidad para los diferentes años.
-Por ello es preciso transformar los datos y ver si con ello podemos asumir un modelo lineal. Para ello determinaremos los valores de \lambda mediante la aplicación de una transformación de Box Cox
+Por ello es preciso transformar los datos y ver si con ello podemos asumir un modelo lineal. Para ello determinaremos los valores de $\lambda$ mediante la aplicación de una transformación de Box Cox
 </div>
 ```{r,warning=F,message=F,echo=F}
 library(MASS)
 leon_tb_l<-droplevels.data.frame(subset(leon_l,leon_l$Gestion=="L"))
 leon_tb_l<-leon_tb_l[-which.max(leon_tb_l$Densidad),]#Retiramos el máximo por ser un error
 leon_tb_l<-leon_tb_l[which(leon_tb_l$Densidad>0),]#Retiramos el valor de 0 por ser un error
-(b<-boxcox(lm((leon_tb_l$Densidad)~1)))
-(c<-b$x[which.max(b$y)])
-#Transformamos los datos
+b<-boxcox(lm((leon_tb_l$Densidad)~1))
+c<-b$x[which.max(b$y)]
+```
+<div class=text-justify>
+El valor de $\lambda$ obtenido es `r b$x[which.max(b$y)]` es el valor de la potencia usada en la transformación de los datos.
+</div>
+```{r,warning=F,message=F,echo=F}
 leon_tb_l$Densidad<-(leon_tb_l$Densidad)^c
 ```
+
 Una vez transformado los datos visualizamos nuevamente
 ```{r,warning=F,message=F,echo=F}
 hist(leon_tb_l$Densidad)
@@ -389,11 +415,16 @@ Se acepta la homocedasticidad
 <div class=text-justify>
 Planteamos ahora un modelo lineal mixto. Esto es conveniente en nuestro caso ya que podemos establecer una parte aleatoria del modelo con los datos anidados por la variable Estación. Como término fijo utilizaríamos la variable año, ya que se trata del factor principal que nos explica precisamente si existen diferencias en los valores de la densidad considerando el año 2014 como el año que se produce el cambio de política de gestión al establecer los libres como libres sin muerte.
 Para la construcción del modelo seguimos el procedimiento que recomienda Zuur et al. (2009) y que se secuenciaría en fases:
-1) Estructura aleatoria óptima. Usando un modelo saturado (beyond optimal model), se determina la estructura óptima del componente aleatorio, la cual no debe contener información que esté en la componente fija. Debemos:
-• construir un modelo saturado.
-• comparar modelos con distinta estructura aleatoria, mediante máxima verosimilitud restringida (REML).
-2) Estructura fija óptima. Una vez encontramos la estructura aleatoria óptima, podemos encontrar la estructura fija óptima. Comparamos los modelos anidados mediante máxima verosimilitud (ML), manteniendo la misma estructura aleatoria.
-3) Ajuste del modelo final con REML.  
+
+1.Estructura aleatoria óptima. Usando un modelo saturado (beyond optimal model), se determina la estructura óptima del componente aleatorio, la cual no debe contener información que esté en la componente fija. Debemos:
+
+  + construir un modelo saturado.
+  
+  + comparar modelos con distinta estructura aleatoria, mediante máxima verosimilitud restringida (REML).
+  
+2.Estructura fija óptima. Una vez encontramos la estructura aleatoria óptima, podemos encontrar la estructura fija óptima. Comparamos los modelos anidados mediante máxima verosimilitud (ML), manteniendo la misma estructura aleatoria.
+
+3.Ajuste del modelo final con REML.  
 </div>
 ```{r,warning=F,message=F,echo=T}
 library(nlme)
@@ -533,7 +564,7 @@ leveneTest(leon_l$Densidad,leon_l$año)#No se acepta la homocedasticidad
 ```
 <div class=text-justify>
 Tampoco se puede aceptar la homocedasticidad de los datos de densidad para los diferentes años.
-Por ello es preciso transformar los datos y ver si con ello podemos asumir un modelo lineal. Para ello determinaremos los valores de \lambda mediante la aplicación de una transformación de Box Cox
+Por ello es preciso transformar los datos y ver si con ello podemos asumir un modelo lineal. Para ello determinaremos los valores de $\lambda$ mediante la aplicación de una transformación de Box Cox
 </div>
 ```{r,warning=F,message=F,echo=F}
 library(MASS)
@@ -541,9 +572,15 @@ leon_l<-subset(leon,leon$Gestion=="L")
 leon_l<-droplevels.data.frame(leon_l)
 #all(is.finite(leon_l$Peso_medio))
 leon_l<-leon_l[which(is.finite(leon_l$Peso_medio)),]
-(b<-boxcox(lm(leon_tb_l$Peso_medio~1)))
-(c<-b$x[which.max(b$y)])
-#Transformamos los datos
+b<-boxcox(lm(leon_tb_l$Peso_medio~1))
+c<-b$x[which.max(b$y)]
+```
+<div class=text-justify>
+El valor de $\lambda$ obtenido es `r b$x[which.max(b$y)]` es el valor de la potencia usada en la transformación de los datos.
+</div>
+Transformamos los datos
+
+```{r,warning=F,echo=F,message=F}
 leon_tb_l$Peso_medio<-(leon_tb_l$Peso_medio)^c
 ```
 Una vez transformado los datos visualizamos nuevamente
@@ -565,11 +602,14 @@ Se acepta la homocedasticidad
 <div class=text-justify>
 Planteamos ahora un modelo lineal mixto. Esto es conveniente en nuestro caso ya que podemos establecer una parte aleatoria del modelo con los datos anidados por la variable Estación. Como término fijo utilizaríamos la variable año, ya que se trata del factor principal que nos explica precisamente si existen diferencias en los valores de la densidad considerando el año 2014 como el año que se produce el cambio de política de gestión al establecer los libres como libres sin muerte.
 Para la construcción del modelo seguimos el procedimiento que recomienda Zuur et al. (2009) y que se secuenciaría en fases:
-1) Estructura aleatoria óptima. Usando un modelo saturado (beyond optimal model), se determina la estructura óptima del componente aleatorio, la cual no debe contener información que esté en la componente fija. Debemos:
-• construir un modelo saturado.
-• comparar modelos con distinta estructura aleatoria, mediante máxima verosimilitud restringida (REML).
-2) Estructura fija óptima. Una vez encontramos la estructura aleatoria óptima, podemos encontrar la estructura fija óptima. Comparamos los modelos anidados mediante máxima verosimilitud (ML), manteniendo la misma estructura aleatoria.
-3) Ajuste del modelo final con REML.  
+1.Estructura aleatoria óptima. Usando un modelo saturado (beyond optimal model), se determina la estructura óptima del componente aleatorio, la cual no debe contener información que esté en la componente fija. Debemos:
+
+  + construir un modelo saturado.
+  + comparar modelos con distinta estructura aleatoria, mediante máxima verosimilitud restringida (REML).
+  
+2.Estructura fija óptima. Una vez encontramos la estructura aleatoria óptima, podemos encontrar la estructura fija óptima. Comparamos los modelos anidados mediante máxima verosimilitud (ML), manteniendo la misma estructura aleatoria.
+
+3.Ajuste del modelo final con REML.  
 </div>
 ```{r,warning=F,message=F,echo=T}
 library(nlme)
@@ -588,7 +628,6 @@ m1d_final<-lme(Peso_medio~1+año,random=~1|Estacion,method="REML",data=leon_tb_l
 summary(m1d_final)#Diferencias entre 2017 y 2016 respecto de 2014
 ```
 <div class=text-justify>
-
 El modelo final lo utilizamos patra contrastar los diferentes niveles de la variable predictora, en este caso los diferentes años mediante comparaciones múltiples mediante eltest de Tukey.
 Comrobamos el modelo de forma gráfica
 </div>
@@ -624,14 +663,13 @@ summary(MC)
 Podemos ver en la tabla de contrastes que para los datos de peso medio existen diferencias significativas de los datos del año 2014, solo con respecto a 2015. No obstante los datos parecen indicar una reducción ligera del peso medio probablemente debido a que la pesca sin muerte en los tramos libres ha supuesto un aumento apreciable de biomasas pero aún más las densidades con lo que el peso medio puede mostrar una ligera reducción. 
 </div>
 
-
 # 3. DISCUSIÓN
 <div class=text-justify>
 De los resultados obtenidos para la provincia de León que es la provincia con mayor número de estaciones de muestreo, se observa que tanto para las variables biomasa como para la densidad esta aumenta en todos los años en comparación con el año base (2014) aunque los efectos son significativos para los años 2017, 2019, 2020 y 2021 en el caso de la biomasa de trucha y para los años 2017, 2018, 2019, 2020 y 2021 en el caso de la densidad.
 
-Debidoa la falta de datros ambientales, tales como factores hidrológicos, composición y estructura del hábitat que caractericen las esptaciones es imposible profundizar en parámetros exc¡plicativos. Igualmente al no ser publicados las estructuras de las poblaciones de trucha inventariadas tampoco conocemos los parámetros poblacionales principales que nos ayuden a comprender la situación en profundidad. Mortalidad, crecimiento o producción, parámetros estros relevantes para una mejor comprensión de las dinámicas poblacionales no es posible determinarlas al no haber sido publicadas las existencias por cohortes de las poblaciones inventariadas.
-No obstante el análisis de densidades, biomasas y en menor mediada el peso medio, entre los diferentes años desde el 2014, parecen clarso al mostrar los datos un claro incremento en los valores de la biomasa de trucha y sobre todo en las densidades, que han visto multiplicado por 3 los valores de 2014 y por 2 en el caso de la biomasa.
-La variable peso medio, sufre una ligera disminución ya que siendo determinada como el cociente entre la biomasa unitaria y la densidad unitaria, y debido a que el aumento de la densidad ha sido superior al aumento en biomasa, este valor ha disminuido aunque no de forma significativa, y mas claramente para León.
+Debidoa la falta de datos ambientales, tales como factores hidrológicos, composición y estructura del hábitat que caractericen las esptaciones es imposible profundizar en parámetros excplicativos. Igualmente al no ser publicados las estructuras de las poblaciones de trucha inventariadas tampoco conocemos los parámetros poblacionales principales que nos ayuden a comprender la situación en profundidad. Mortalidad, crecimiento o producción, parámetros éstos relevantes para una mejor comprensión de las dinámicas poblacionales no es posible determinarlas al no haber sido publicadas las existencias por cohortes de las poblaciones inventariadas.
+No obstante el análisis de densidades, biomasas y en menor mediada el peso medio, entre los diferentes años desde el 2014, parecen claros al mostrar los datos un importante incremento en los valores de la biomasa de trucha y sobre todo en las densidades, que han visto multiplicado por 3 los valores de 2014 y por 2 en el caso de la biomasa.
+La variable peso medio, sufre una ligera disminución ya que siendo determinada como el cociente entre la biomasa unitaria y la densidad unitaria, y debido a que el aumento de la densidad ha sido superior al aumento en biomasa, este valor ha disminuido aunque no de forma significativa.
 
 Para analizar con más profundidad estos datos sería relevante determinar para las estaciones de muestreo la estructura de cohortes, parámetros de crecimiento y mortalidad. Con ello se podría determinar con más precisión el alcance de estos valores de peso medio.
 
