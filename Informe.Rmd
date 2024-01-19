@@ -204,12 +204,14 @@ c<-b$x[which.max(b$y)]
 <div class=text-justify>
 El valor de $\lambda$ obtenido es `r b$x[which.max(b$y)]` es el valor de la potencia usada en la transformación de los datos.
 </div>
+
 ```{r, warning=F,message=F,echo=F}
 #Transformamos los datos
 leon_tb_l$Biomasa<-(leon_tb_l$Biomasa)^c
 ```
 
 Una vez transformado los datos visualizamos nuevamente
+
 ```{r,warning=F,message=F,echo=F}
 hist(leon_tb_l$Biomasa)
 ggplot(data = leon_tb_l,aes(x=año,y=Biomasa))+geom_boxplot()+ggtitle("Boxplot de las biomasas transformadas")+labs(y="Biomasa transformada")
@@ -396,6 +398,7 @@ leon_tb_l$Densidad<-(leon_tb_l$Densidad)^c
 ```
 
 Una vez transformado los datos visualizamos nuevamente
+
 ```{r,warning=F,message=F,echo=F}
 hist(leon_tb_l$Densidad)
 ggplot(data = leon_tb_l,aes(x=año,y=Densidad))+geom_boxplot()+ggtitle("Boxplot de las densidades transformadas")+labs(y="Densidad transformada")
@@ -584,6 +587,7 @@ Transformamos los datos
 leon_tb_l$Peso_medio<-(leon_tb_l$Peso_medio)^c
 ```
 Una vez transformado los datos visualizamos nuevamente
+
 ```{r,warning=F,message=F,echo=F}
 hist(leon_tb_l$Peso_medio)
 ggplot(data = leon_tb_l,aes(x=año,y=Peso_medio))+geom_boxplot()+ggtitle("Boxplot de las densidades transformadas")+labs(y="Densidad transformada")
