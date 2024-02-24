@@ -66,14 +66,14 @@ tamaño_muestral<-data.frame(numero=tapply(leon_l[,6],leon_l[,5],longitud),año=
 sd<-function(x){  sqrt(var(x,na.rm=T))
 }
 Media<-tapply(leon_l[,6],leon_l[,5],mean,na.rm=T)
-medias<-data.frame(Año=unique(leon_l$año),Medias=Media)
+medias<-data.frame(Año=sort(unique(leon_l$año)),Medias=Media)
 Desv<-tapply(leon_l[,6],leon_l[,5],sd)
 tabla<-rbind(Media,Desv)
 knitr::kable(tabla, caption = 'Valores medios y desviaciones estandar')
 B<-ggplot(leon_l,aes(x=año,y=Biomasa))+ylab("gr/m2")+geom_bar(stat="summary",fun="mean")+ggtitle("Biomasas de trucha en los libres sm (provincia de León)")
 
 #B+annotate("text",x=1:5,y=c(3.67,6.2,7.08,8.51,6.83)+.3,label=c("3.67","6.2","7.08","8.51","6.83"),col="blue")
-c<-B+geom_text(data=medias,aes(x=as.factor(Año),y=Medias,label=paste(round(Medias,2))),nudge_y=.4,nudge_x=-.2)+stat_summary(fun.data = mean_se,geom="errorbar",linewidth = 1,width = 0.2)
+c<-B+geom_text(data=medias,aes(x=as.factor(Año),y=Medias,label=paste(round(Medias,2))),nudge_y=.4,nudge_x=-.3)+stat_summary(fun.data = mean_se,geom="errorbar",linewidth = 1,width = 0.2)
 c+geom_text(data=tamaño_muestral,aes(x=as.factor(año),y=rep(-0.3,length(unique(leon_l$año))),label=paste("n= ",numero)))
 
 #Para los valores de densidad
