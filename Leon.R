@@ -16,8 +16,8 @@ a<-length(colnames(biom)[grep(pattern = '2',colnames(biom))])
 colnames(biom)[grep(pattern = '2',colnames(biom))][a]
 #Cambiamos de formato de los datos
 library(tidyr)
-biom_long<-pivot_longer(biom,cols=3:11,names_to="año",values_to = "Biomasa")
-dens_long<-pivot_longer(dens,cols=3:11,names_to = "año",values_to = "Densidad")
+biom_long<-pivot_longer(biom,cols=3:(ncol(biom)-2),names_to="año",values_to = "Biomasa")
+dens_long<-pivot_longer(dens,cols=3:(ncol(dens)-2),names_to = "año",values_to = "Densidad")
 #biom_long<-melt(biom,id=c("Estacion","Provincia","Gestion","Nivel"),measure.vars = c("2014","2015","2016","2017","2018","2019","2020","2021"),variable_name = "año")
 #dens_long<-melt(dens,id=c("Estacion","Provincia","Gestion","Nivel"),measure.vars = c("2014","2015","2016","2017","2018","2019","2020","2021"),variable_name = "año")
 #1.1 Unimos las 2 tablas
