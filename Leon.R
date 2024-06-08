@@ -83,6 +83,7 @@ longitud<-function(x){
 tamaño_muestral<-data.frame(numero=tapply(leon_l[,7],leon_l[,5],longitud),año=unique(leon_l$año))
 Media_d<-tapply(leon_l[,7],leon_l[,5],mean,na.rm=T)
 medias_d<-data.frame(Año=sort(unique(leon_l$año)),Medias=Media_d)
+knitr::kable(medias_d,digits=3,align="c",caption="Medias y desviaciones de la variable densidad de trucha")
 B<-ggplot(leon_l,aes(x=año,y=Densidad))+ylab("Indv/m2")+geom_bar(stat="summary",fun="mean")+ggtitle("Densidad de trucha en los libres sm (provincia de León)")
 c<-B+geom_text(data=medias_d,aes(x=as.factor(Año),y=Medias,label=paste(round(Medias,2))),nudge_y=.02,nudge_x=-.3)+stat_summary(fun.data = mean_se,geom="errorbar",col="blue",width=.2,linewidth=1)
 c+geom_text(data=tamaño_muestral,aes(x=as.factor(año),y=rep(-0.02,length(unique(leon_l$año))),label=paste("n= ",numero)))
