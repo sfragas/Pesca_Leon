@@ -1,19 +1,19 @@
 ---
 title: "Analisis poblaciones de trucha en León"
 author: "Santiago Fraga Sáenz"
-date: "13/12/2023"
+date: "05/06/2024"
 output:
-  pdf_document:
-    toc: yes
-    toc_depth: 5
-  fontsize: 22pt
-  geometry: margin=.5in 
   html_document:
     toc: yes
     toc_depth: 5
     toc_float:
       collapsed: no
       smooth_scroll: yes
+  fontsize: 22pt
+  geometry: margin=.5in 
+  pdf_document:
+    toc: yes
+    toc_depth: 5
   word_document:
     toc: yes
     toc_depth: '5'
@@ -41,8 +41,8 @@ Por todo ello procede determinar si la declaración de las aguas libres como lib
 ```{r,warning=F,message=F,tidy=F,echo=F,error=FALSE}
 #Cambiamos de formato de los datos
 library(tidyr)
-biom_long<-pivot_longer(biom,cols=3:10,names_to="año",values_to = "Biomasa")
-dens_long<-pivot_longer(dens,cols=3:10,names_to = "año",values_to = "Densidad")
+biom_long<-pivot_longer(biom,cols=3:11,names_to="año",values_to = "Biomasa")
+dens_long<-pivot_longer(dens,cols=3:11,names_to = "año",values_to = "Densidad")
 datos<-cbind(biom_long,dens_long[,6])
 colnames(datos)[7]<-c("Densidad")
 #1.2 Añadimos el peso medio dividiendo Biomas entre Densidad
@@ -136,7 +136,7 @@ Representamos las variables para los tramos libres, donde es previsible que se p
 ```{r,warning=F,message=F,echo=F,fig.height=7,fig.width=7}
 #Variable biomasa
 ggplot(leon_l,aes(x=año,y=Biomasa,fill=Gestion))+geom_boxplot()+ggtitle("Boxplot de la biomasa de trucha en libres sin muerte 
-para cada año (Castilla)")
+para cada año")
 ```
 <div class=text-justify>
 Se observa la existencia de posibles outliers que para la comprobación de las comparaciones y realizar las comprobaciones de hipótesis deberá ser tenida en cuenta para elegir la tecnica estadística.
@@ -166,7 +166,7 @@ Representamos la distribución mediante histograma de la variable biomasa
 
 ```{r,warning=F,message=F,echo=F}
 B<-ggplot(leon_l,aes(x=año,y=Biomasa))+ylab("gr/m2")+geom_bar(stat="summary",fun="mean")+ggtitle("Biomasas de trucha en los libres sm (provincia de León)")
-c<-B+geom_text(data=medias,aes(x=as.factor(Año),y=Medias,label=paste(round(Medias,2))),nudge_y=.4,nudge_x=-.2)+stat_summary(fun.data = mean_se,geom="errorbar",linewidth = 1,width = 0.2)
+c<-B+geom_text(data=medias,aes(x=as.factor(Año),y=Medias,label=paste(round(Medias,2))),nudge_y=.4,nudge_x=-.3)+stat_summary(fun.data = mean_se,geom="errorbar",linewidth = 1,width = 0.2)
 c+geom_text(data=tamaño_muestral,aes(x=as.factor(año),y=rep(-0.3,length(unique(leon_l$año))),label=paste("n= ",numero)))
 
 ```    
